@@ -37,6 +37,6 @@ def build(ctx):
             #libpath      = ['/usr/lib'],
             #stlib        = ['dl'],
             #stlibpath    = ['/usr/local/lib'],
-            linkflags    = ['-g'],
-            cxxflags     = ['-g', '-std=c++11', '-Wall', '-Werror'],
+            linkflags    = ['-ggdb'],
+            cxxflags     = ['-ggdb', '-std=c++11', '-Wall', '-Werror'],
     )

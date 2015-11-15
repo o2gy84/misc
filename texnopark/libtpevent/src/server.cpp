@@ -10,7 +10,7 @@ namespace
         std::unique_ptr<Engine> ret;
         switch (type)
         {
-            case engine_t::SELECT:  ret.reset (new PollEngine(port)); break;
+            case engine_t::SELECT: throw std::logic_error("not supported"); break;
             case engine_t::POLL:
             {
                 if (async) ret.reset (new AsyncPollEngine(port));

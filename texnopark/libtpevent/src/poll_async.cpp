@@ -27,29 +27,27 @@ using namespace std::placeholders;
 
 // CONNECTION
 
-Connection::Connection(int sd, EventLoop *loop): m_Client(sd), m_EventLoop(loop)
+Connection::Connection(int sd, EventLoop *loop): m_Sd(sd), m_EventLoop(loop)
 {
-    std::cerr << "+Connection: " << m_Client.sd << "\n";
+    std::cerr << "+Connection: " << m_Sd << "\n";
 }
 Connection::~Connection()
 {
-    std::cerr << "~Connection: " << m_Client.sd << "\n"; close(m_Client.sd);
+    std::cerr << "~Connection: " << m_Sd << "\n"; close(m_Sd);
 }
 
 void Connection::read()
 {
-    // TODO: need lock
-
-    m_Client.state = client_state_t::WANT_READ;
-
-    m_EventLoop->asyncRead(shared_from_this(), std::bind(&Connection::readHandler, this, _1));
+    m_EventLoop->asyncRead(m_Sd, m_ReadBuf, std::bind(&Connection::readHandler, shared_from_this(), _1));
 }
 
-void Connection::readHandler(const std::string &s)
+void Connection::readHandler(int error)
 {
+    std::string s = m_ReadBuf;
+
     if (s.empty())
     {
-        std::cerr << "thread: " << pthread_self() << ". readHandler: abort connection!\n";
+        std::cerr << "thread: " << pthread_self() << ". readHandler: abort connection! [sd: " << m_Sd << "]" << std::endl;
         return;
     }
 
@@ -57,26 +55,17 @@ void Connection::readHandler(const std::string &s)
     while (tmp[tmp.size() - 1] == '\r' || tmp[tmp.size() - 1] == '\n')
         tmp.pop_back();
 
-    std::cerr << "thread: " << pthread_self() << ". readHandler: " << s.size() << " bytes [" << tmp << "]\n";
+    std::cerr << "thread: " << pthread_self() << ". readHandler: " << s.size() << " bytes [" << tmp << "] [sd: " << m_Sd << "]" << std::endl;
     write("server: " + tmp + "\n");
 }
 
 void Connection::write(const std::string &s)
 {
-    // TODO: need lock
-    m_WriteBuf = s;
-
-    m_Client.state = client_state_t::WANT_WRITE;
-
-    m_EventLoop->asyncWrite(shared_from_this(), s, std::bind(&Connection::writeHandler, this, _1));
+    m_WriteBuf = s;             // save string in memory
+    m_EventLoop->asyncWrite(m_Sd, m_WriteBuf, std::bind(&Connection::writeHandler, shared_from_this(), _1));
 }
 
-//void Connection::writeHandler()
-//{
-    //read();
-//}
-
-void Connection::writeHandler(const std::string &s)
+void Connection::writeHandler(int error)
 {
     read();
 }
@@ -84,22 +73,34 @@ void Connection::writeHandler(const std::string &s)
 
 // EVENT LOOP
 
-void EventLoop::delClient(int sd)
+void EventLoop::deleteClient(int sd)
 {
-    auto f = [&sd](const event_cb_t &state) { return state.first->m_Client.sd == sd; };
+    std::unique_lock<std::mutex> lock(m_WantWorkQueueMutex);                        // without this lock it fault very easy
+
+    auto f = [&sd](const Event &event) { return event._client.sd == sd; };
     auto iterator = std::find_if(m_ClientsWantWork.begin(), m_ClientsWantWork.end(), f);
+    std::cerr << "delete: " << sd << "\n";
     assert(iterator != m_ClientsWantWork.end());
+
     m_ClientsWantWork.erase(iterator);
 }
 
-void EventLoop::asyncRead(std::shared_ptr<Connection> conn, std::function<void(const std::string &s)> cb)
+void EventLoop::asyncRead(int sd, std::string &str, std::function<void(int)> cb)
 {
-    m_ClientsWantWork.push_back(std::pair<std::shared_ptr<Connection>, std::function<void(const std::string &s)>>(conn, cb));
+    Event e (Client(sd, client_state_t::WANT_READ), str);
+    e._callback = cb;
+
+    std::unique_lock<std::mutex> lock(m_WantWorkQueueMutex);
+    m_ClientsWantWork.emplace_back(e);
 }
 
-void EventLoop::asyncWrite(std::shared_ptr<Connection> conn, const std::string &str, std::function<void(const std::string &s)> cb)
+void EventLoop::asyncWrite(int sd, const std::string &str, std::function<void(int)> cb)
 {
-    m_ClientsWantWork.push_back(std::pair<std::shared_ptr<Connection>, std::function<void(const std::string &s)>>(conn, cb));
+    Event e (Client(sd, client_state_t::WANT_WRITE), const_cast<std::string&>(str));     // XXX: const_cast hack !!!
+    e._callback = cb;
+
+    std::unique_lock<std::mutex> lock(m_WantWorkQueueMutex);
+    m_ClientsWantWork.emplace_back(e);
 }
 
 int EventLoop::manageConnections()
@@ -123,16 +124,16 @@ int EventLoop::manageConnections()
 
         for (size_t i = 0; i < m_ClientsWantWork.size(); ++i)
         {
-            fds[i].fd = m_ClientsWantWork[i].first->m_Client.sd;
+            fds[i].fd = m_ClientsWantWork[i]._client.sd;
 
-            if (m_ClientsWantWork[i].first->m_Client.state == client_state_t::WANT_READ)
+            if (m_ClientsWantWork[i]._client.state == client_state_t::WANT_READ)
                 fds[i].events = POLLIN;
             else
                 fds[i].events = POLLOUT;
             fds[i].revents = 0;
         }
 
-        int poll_ret = poll(fds, m_ClientsWantWork.size(), /* timeout in msec */ 100);
+        int poll_ret = poll(fds, m_ClientsWantWork.size(), /* timeout in msec */ 10);
 
         if (poll_ret == 0)
         {
@@ -158,47 +159,46 @@ int EventLoop::manageConnections()
             }
             else if (fds[i].revents & POLLIN)
             {
-                if (m_ClientsWantWork[i].first->m_Client.state != client_state_t::WANT_READ)
+                if (m_ClientsWantWork[i]._client.state != client_state_t::WANT_READ)
                     continue;
                
                 {
-                    std::unique_lock<std::mutex> lock(_mutex);
+                    std::unique_lock<std::mutex> lock(m_HaveWorkQueueMutex);
                     m_ClientsHaveWork.push(m_ClientsWantWork[i]);
                 }
-                delClient(fds[i].fd);
+                deleteClient(fds[i].fd);
             }
             else if (fds[i].revents & POLLOUT)
             {
-                if (m_ClientsWantWork[i].first->m_Client.state != client_state_t::WANT_WRITE)
+                if (m_ClientsWantWork[i]._client.state != client_state_t::WANT_WRITE)
                     continue;
 
                 {
-                    std::unique_lock<std::mutex> lock(_mutex);
+                    std::unique_lock<std::mutex> lock(m_HaveWorkQueueMutex);
                     m_ClientsHaveWork.push(m_ClientsWantWork[i]);
                 }
-                delClient(fds[i].fd);
+                deleteClient(fds[i].fd);
             }
             else if (fds[i].revents & POLLNVAL)
             {
                 // e.g. if set clos'ed descriptor in poll
-                std::cerr << "POLLNVAL !!! need remove this descriptor: " << fds[i].fd << "\n";
+                std::cerr << "POLLNVAL !!! need remove this descriptor: " << fds[i].fd << std::endl;
                 disconnected_clients.push_back(fds[i].fd);
             }
             else
             {
                 if (fds[i].revents & POLLERR)
-                    std::cerr<<"WARNING> revents = POLLERR. [SD = " << fds[i].fd <<"]\n";
+                    std::cerr<<"WARNING> revents = POLLERR. [SD = " << fds[i].fd <<"]" << std::endl;
                 else
-                    std::cerr<<"WARNIG> revent = UNKNOWN_EVENT: "<< fds[i].revents<<" [SD = " << fds[i].fd<<"]\n";
+                    std::cerr<<"WARNIG> revent = UNKNOWN_EVENT: "<< fds[i].revents<<" [SD = " << fds[i].fd<<"]" << std::endl;
             }
         }
 
         // remove disconnected clients
         for (size_t i = 0; i< disconnected_clients.size(); ++i)
-            delClient(disconnected_clients[i]);
+            deleteClient(disconnected_clients[i]);
 
-    }   // while (1)
-
+    }
     return 0;
 }
 
@@ -215,21 +215,22 @@ void EventLoop::run()
     std::unique_ptr<std::thread> conn_manager;
     {
         std::lock_guard<std::mutex> lock(conn_manager_mutex);
-        static int xyz = 0;
-        if (xyz == 0)
+        static int connection_manager_already_started = 0;
+        if (connection_manager_already_started == 0)
         {
             conn_manager.reset(new std::thread(&EventLoop::manageConnections, this));
             usleep(1000);
-            ++xyz;
+            ++connection_manager_already_started;
         }
     }
 
     std::cerr << "start worker thread: " << pthread_self() << "\n";
     while (1)
     {
-        event_cb_t event;
+        std::string dummy;
+        Event event(Client(-1), dummy);
         {
-            std::unique_lock<std::mutex> lock(_mutex);
+            std::unique_lock<std::mutex> lock(m_HaveWorkQueueMutex);
             if (m_ClientsHaveWork.empty())
             {
                 lock.unlock();
@@ -241,33 +242,35 @@ void EventLoop::run()
             m_ClientsHaveWork.pop();
         }
 
-        if (event.first->m_Client.state == client_state_t::WANT_READ)
+        if (event._client.state == client_state_t::WANT_READ)
         {
             char buf[256];
-            int r = read(event.first->m_Client.sd, buf, sizeof(buf));
+            int r = read(event._client.sd, buf, sizeof(buf));
 
             if (r < 0)
             {
                 std::cerr << "some read error!\n";
                 sleep(1);
-                close(event.first->m_Client.sd);
+                close(event._client.sd);
                 continue;
             }
             buf[r] = '\0';
 
             if (r > 0)
             {
-                event.second(std::string(buf, buf + r));
+                event._data.get().assign(buf, buf + r);
+                event._callback(errno);
             }
             else if (r == 0)
             {
-                event.second("");
+                event._data.get().assign("");
+                event._callback(errno);
             }
         }
-        else if (event.first->m_Client.state == client_state_t::WANT_WRITE)
+        else if (event._client.state == client_state_t::WANT_WRITE)
         {
-            write(event.first->m_Client.sd, event.first->m_WriteBuf.data(), event.first->m_WriteBuf.size());
-            event.second("govno");
+            write(event._client.sd, event._data.get().c_str(), event._data.get().size());
+            event._callback(errno);
         }
         else
         {
@@ -317,7 +320,7 @@ void AsyncPollEngine::run()
 {
     std::cerr << "async poll server starts" << std::endl;
 
-    EventLoop ev;
+    EventLoop &ev = EventLoop::eventLoop();
     std::vector<std::thread> event_loop_threads;
 
     for (int i = 0; i < 4; ++i)

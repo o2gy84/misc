@@ -1,33 +1,46 @@
-
 #include <vector>
 #include <mutex>
 #include <queue>
 
 #include "engine.hpp"
 
-class Connection;                           // pre declaration
-
-typedef std::pair<std::shared_ptr<Connection>, std::function<void(const std::string &s)>> event_cb_t;
-
 class EventLoop
 {
     public:
-        explicit EventLoop() {}
+        static EventLoop& eventLoop() { static EventLoop ev; return ev; }
         void run();
 
-        void asyncRead(std::shared_ptr<Connection>, std::function<void(const std::string &s)> cb);
-        void asyncWrite(std::shared_ptr<Connection>, const std::string &str, std::function<void(const std::string &s)> cb);
+        void asyncRead(int sd, std::string &str, std::function<void(int)> cb);
+        void asyncWrite(int sd, const std::string &str, std::function<void(int)> cb);
 
     private:
-        int manageConnections();            // push int queue READ or WRITE events
-        void delClient(int sd);
+        EventLoop() {};
+        EventLoop(const EventLoop&);
+        int manageConnections();            // push into queue READ or WRITE events
+        void deleteClient(int sd);
+
+        struct Event
+        {
+            Event(Client c, std::string &data): _client(c), _data(data)   {}
+            Event& operator=(const Event &h)
+            {
+                _client = h._client;
+                _data = std::ref(h._data);
+                _callback = h._callback;
+                return *this;
+            }
+
+            Client _client;
+            std::function<void(int)> _callback;
+            std::reference_wrapper<std::string> _data;  // read or write buffer
+        };
 
     private:
-        std::mutex _mutex;
-        //std::queue<Client> _queue;                  // queue of events
-        
-        std::vector<event_cb_t> m_ClientsWantWork;  // clients who wants read or write
-        std::queue<event_cb_t> m_ClientsHaveWork;   // clients who has data to read or write
+        std::mutex m_HaveWorkQueueMutex;
+        std::mutex m_WantWorkQueueMutex;
+
+        std::vector<Event> m_ClientsWantWork;  // clients who wants read or write
+        std::queue<Event> m_ClientsHaveWork;   // clients who has data to read or write
 };
 
 class Connection: public std::enable_shared_from_this<Connection>
@@ -39,36 +52,20 @@ class Connection: public std::enable_shared_from_this<Connection>
         void read();
         void write(const std::string &s);
 
-        void readHandler(const std::string &s);
-        void writeHandler(const std::string &s);
-        //void writeHandler();
+        void readHandler(int error);
+        void writeHandler(int error);
 
+    private:
         std::string m_WriteBuf;
-        Client m_Client;
+        std::string m_ReadBuf;
+
+        int m_Sd;
         EventLoop *m_EventLoop;
 };
-
-
-/*
-typedef int (Connection::*callback)(const std::string);
-class ConnectionCallback
-{
-    public:
-        std::function<void(const std::string &s)> m_Cb;
-};
-*/
 
 class AsyncPollEngine: public Engine
 {
     public:
         explicit AsyncPollEngine(int port): Engine(port) {}
         virtual void run() override;
-
-    private:
-        void delClient(int sd);
-
-        //void acceptNewConnections();
-        //void manageConnections();
-
-    private:
 };
