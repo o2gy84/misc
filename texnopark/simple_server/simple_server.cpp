@@ -9,7 +9,7 @@ void client_work(std::shared_ptr<Socket> client)
     while (true) try
     {
         std::string line = client->recv();
-        client->send("echo: " + line);
+        client->send("echo: " + line + "\n");
     }
     catch(const std::exception &e)
     {
@@ -30,12 +30,12 @@ int main(int argc, char *argv[])
     try
     {
         Socket s;
-        s.listen(port, 25);
-        while (true)
+        s.createServerSocket(port, 1);
+
+        while(true)
         {
             std::shared_ptr<Socket> client = s.accept();
-            std::thread t(std::bind(client_work, client));
-            t.detach();
+            client_work(client);
         }
     }
     catch(const std::exception &e)
