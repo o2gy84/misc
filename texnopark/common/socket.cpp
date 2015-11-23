@@ -4,7 +4,7 @@
 #include <string.h>
 #include <sys/socket.h> // socket(), AF_INET/PF_INET
 #include <netinet/in.h> // struct sockaddr_in
-//#include <arpa/inet.h>  // inet_aton()
+#include <arpa/inet.h>  // inet_aton()
 #include <netdb.h>      // gethostbyname
 #include <fcntl.h>
 
@@ -79,6 +79,17 @@ void Socket::setRcvTimeout(int sec, int microsec) throw (std::exception)
         throw std::runtime_error("set rcvtimeout: " + std::string(strerror(errno)));
 }
 
+void Socket::setReuseAddr(int sd) throw (std::exception)
+{
+    int yes = 1;
+    if (setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1)
+    {
+        close(sd);
+        throw std::runtime_error("setopt: " + std::string(strerror(errno)));
+    }
+}
+
+
 void Socket::connect(const std::string &host, int port) throw (std::exception)
 {
     m_Sd = connect_impl(host.data(), port);
@@ -90,8 +101,6 @@ void Socket::send(const std::string &str) throw (std::exception)
     ssize_t sent = 0;
     //int flags = MSG_DONTWAIT | MSG_NOSIGNAL;
     int flags = 0;
-
-    std::cerr << "send:\n" << str << std::endl;
 
     while (left > 0)
     {
@@ -150,30 +159,58 @@ bool parse_protocol(const std::string &buf, size_t &bytes_left)
 
 std::string Socket::recv() throw (std::exception)
 {
-    std::string ret;
-    char buf[128];
-    //int flags = MSG_DONTWAIT | MSG_NOSIGNAL;
-    int flags = 0;
+    char buf[256];
+    int n = ::recv(m_Sd, buf, sizeof(buf), MSG_NOSIGNAL);
+    if (-1 == n && errno != EAGAIN)
+        throw std::runtime_error("read failed: " + std::string(strerror(errno)));
+    if (0 == n)
+        throw std::runtime_error("client: " + std::to_string(m_Sd) + " disconnected");
+    if (-1 == n)
+        throw std::runtime_error("client: " + std::to_string(m_Sd) + " timeouted");
 
-    while (true)
+    std::string ret(buf, buf + n);
+    while (ret.back() == '\r' || ret.back() == '\n')
+        ret.pop_back();
+    std::cerr << "client: " << m_Sd << ", recv: " << ret << " [" << n << " bytes]" << std::endl;
+    return buf;
+}
+
+
+void Socket::listen(uint32_t port, uint32_t listen_queue_size) throw (std::exception)
+{
+    int sd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (sd <= 0)
+        throw std::runtime_error("socket: " + std::string(strerror(errno)));
+
+    setReuseAddr(sd);
+
+    struct sockaddr_in serv_addr;
+    memset(&serv_addr, 0, sizeof(serv_addr));
+
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    serv_addr.sin_port = htons(port);
+
+    if (::bind(sd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
     {
-        int n = ::recv(m_Sd, buf, sizeof(buf), flags);
-        
-        std::cerr << "recv: " << n << " bytes\n";
-
-        if (-1 == n && errno != EAGAIN)
-            throw std::runtime_error("read failed: " + std::string(strerror(errno)));
-
-        if (0 == n || -1 == n)
-            break;
-        
-        size_t bytes_left = 0;
-        ret.append(buf, n);
-        if (parse_protocol(ret, bytes_left))
-            return ret + recv(bytes_left);
+        close(sd);
+        throw std::runtime_error("bind: " + std::string(strerror(errno)));
     }
 
-    return ret;
+    ::listen(sd, listen_queue_size);
+    m_Sd = sd;
+}
+
+std::shared_ptr<Socket> Socket::accept() throw (std::exception)
+{
+    struct sockaddr_in client;
+    memset(&client, 0, sizeof(client));
+    socklen_t cli_len = sizeof(client);
+
+    int cli_sd = ::accept(m_Sd, (struct sockaddr*)&client, &cli_len);
+    std::cerr << "new client: " << cli_sd << ", from: " << int2ipv4(client.sin_addr.s_addr) << std::endl;
+    
+    return std::make_shared<Socket>(cli_sd);
 }
 
 
