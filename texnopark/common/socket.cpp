@@ -84,7 +84,7 @@ void Socket::setReuseAddr(int sd) throw (std::exception)
     int yes = 1;
     if (setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1)
     {
-        close(sd);
+        ::close(sd);
         throw std::runtime_error("setopt: " + std::string(strerror(errno)));
     }
 }
@@ -176,7 +176,7 @@ std::string Socket::recv() throw (std::exception)
 }
 
 
-void Socket::listen(uint32_t port, uint32_t listen_queue_size) throw (std::exception)
+void Socket::createServerSocket(uint32_t port, uint32_t listen_queue_size) throw (std::exception)
 {
     int sd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (sd <= 0)
@@ -193,7 +193,7 @@ void Socket::listen(uint32_t port, uint32_t listen_queue_size) throw (std::excep
 
     if (::bind(sd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
     {
-        close(sd);
+        ::close(sd);
         throw std::runtime_error("bind: " + std::string(strerror(errno)));
     }
 

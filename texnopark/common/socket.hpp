@@ -2,12 +2,13 @@
 #include <unistd.h>     // close()
 #include <memory>
 
+
 class Socket
 {
     public:
         Socket()       : m_Sd(-1) {}
         Socket(int sd) : m_Sd(sd) {}
-        ~Socket()                 { if (m_Sd > 0) close(m_Sd); }
+        ~Socket()                 { if (m_Sd > 0) ::close(m_Sd); }
 
     public:
 
@@ -18,11 +19,11 @@ class Socket
         void setRcvTimeout(int sec, int microsec)       throw (std::exception);
         void setNonBlocked(bool opt)                    throw (std::exception);
         void setReuseAddr(int sd)                       throw (std::exception);
-        void listen(uint32_t port, uint32_t queue_size) throw (std::exception);
+        void createServerSocket(uint32_t port, uint32_t queue_size) throw (std::exception);
         std::shared_ptr<Socket> accept()                throw (std::exception);
+        void close()                     { ::close(m_Sd); }
 
-        template<typename Callback>
-        void httpQuery(const std::string &query, Callback cb) throw (std::exception)
+        void httpQuery(const std::string &query, std::function<void(const std::string &s)> cb) throw (std::exception)
         {
             send(query);
             std::string res = recv();
@@ -30,8 +31,8 @@ class Socket
         }
 
     private:
-        Socket(const Socket &s);
-        const Socket& operator=(const Socket &s);
+        //Socket(const Socket &s);
+        //const Socket& operator=(const Socket &s);
     private:
         int m_Sd;
 };
