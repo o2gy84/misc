@@ -2,6 +2,7 @@
 #include <stdexcept>
 #include <thread>
 #include <vector>
+#include <algorithm>
 #include "../common/socket.hpp"
 
 void client_work(std::shared_ptr<Socket> client)
@@ -37,11 +38,19 @@ int main(int argc, char *argv[])
 
         while(true)
         {
-            std::shared_ptr<Socket> client = s.accept();
-            if (client)
+            usleep(100);
+            while (auto client = s.accept())
             {
-                client_work(client);
+                client->setNonBlocked(true);
+                clients.push_back(client);
             }
+
+            std::for_each(clients.begin(), clients.end(), [](std::shared_ptr<Socket> s){
+                if (s->hasData())
+                {
+                    s->recv();
+                }
+            });
         }
     }
     catch(const std::exception &e)

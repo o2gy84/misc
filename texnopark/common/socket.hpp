@@ -11,9 +11,10 @@ class Socket
         ~Socket()                 { if (m_Sd > 0) ::close(m_Sd); }
 
     public:
-
+        int  sd() const noexcept { return m_Sd; }
         void connect(const std::string &host, int port) throw (std::exception);
         void send(const std::string &s)                 throw (std::exception);
+        bool hasData()                                  throw (std::exception);
         std::string recv()                              throw (std::exception);
         std::string recv(size_t bytes)                  throw (std::exception);
         void setRcvTimeout(int sec, int microsec)       throw (std::exception);

@@ -175,6 +175,13 @@ std::string Socket::recv() throw (std::exception)
     return ret;
 }
 
+bool Socket::hasData() throw (std::exception)
+{
+    char buf[1];
+    int n = ::recv(m_Sd, buf, sizeof(buf), MSG_PEEK);
+    if (n > 0) return true;
+    return false;
+}
 
 void Socket::createServerSocket(uint32_t port, uint32_t listen_queue_size) throw (std::exception)
 {
