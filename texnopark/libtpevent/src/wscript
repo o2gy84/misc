@@ -30,7 +30,7 @@ def build(ctx):
             target       ='app',
             use          ='myshlib',
             source       =['main.cpp', 'options.cpp', 'utils.cpp', 'server.cpp', 'engine.cpp',
-                            'poll.cpp', 'poll_async.cpp', 'epoll.cpp',],
+                            'select.cpp', 'poll.cpp', 'poll_async.cpp', 'epoll.cpp',],
             includes     = ['.'],
             defines     = ['DEBUG=1'],
             lib          = ['pthread'],
