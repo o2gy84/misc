@@ -208,6 +208,8 @@ std::shared_ptr<Socket> Socket::accept() throw (std::exception)
     socklen_t cli_len = sizeof(client);
 
     int cli_sd = ::accept(m_Sd, (struct sockaddr*)&client, &cli_len);
+    if (-1 == cli_sd)
+        return std::shared_ptr<Socket>();
     std::cerr << "new client: " << cli_sd << ", from: " << int2ipv4(client.sin_addr.s_addr) << std::endl;
     
     return std::make_shared<Socket>(cli_sd);
