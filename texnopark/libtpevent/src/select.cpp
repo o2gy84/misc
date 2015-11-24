@@ -16,15 +16,14 @@
 void SelectEngine::manageConnections()
 {
     fd_set read_fds;
-    FD_ZERO(&read_fds);
-    FD_SET(listener(), &read_fds);
-
     m_Clients.push_back(Client(listener()));        // hack!!!
-    int fdmax = listener();
 
     while (1)
     {
         std::vector<int> disconnected_clients;
+        FD_ZERO(&read_fds);
+        FD_SET(listener(), &read_fds);
+        int fdmax = listener();
 
         for (auto i: m_Clients)
         {
