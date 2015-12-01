@@ -219,6 +219,23 @@ std::string Socket::recv() throw (std::exception)
     return ret;
 }
 
+
+std::string Socket::recvTimed(int timeout) throw (std::exception)
+{
+    fd_set read_fds;
+    FD_ZERO(&read_fds);
+    FD_SET(m_Sd, &read_fds);
+    struct timeval tm;
+    tm.tv_sec = timeout;
+    tm.tv_usec = 0;
+    int sel = select(m_Sd + 1, /*read*/&read_fds, /*write*/NULL, /*exceptions*/NULL, &tm);
+    if (sel != 1)
+        throw std::runtime_error("read timeout");
+
+    return recv();
+}
+
+
 bool Socket::hasData() throw (std::exception)
 {
     char buf[1];

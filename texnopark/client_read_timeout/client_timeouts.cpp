@@ -19,11 +19,9 @@ int main(int argc, char *argv[])
         int port = std::stoi(argv[2]);
 
         Socket s;
-        s.connect(host, port, /*timeout, sec*/5);
-        // Проверка что таймаут работает:
-        // google.com 81
-        // 192.168.0.0, 10.255.255.1, 192.168.255.255 e.t.c - existing, but no routed hosts
-
+        s.connect(host, port);
+        s.setNonBlocked(true);
+        s.recvTimed(3);
     }
     catch(const std::exception &e)
     {

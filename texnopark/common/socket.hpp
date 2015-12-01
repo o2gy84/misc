@@ -18,6 +18,7 @@ class Socket
         bool hasData()                                                  throw (std::exception);
         std::string recv()                                              throw (std::exception);
         std::string recv(size_t bytes)                                  throw (std::exception);
+        std::string recvTimed(int timeout)                              throw (std::exception);
         void setRcvTimeout(int sec, int microsec)                       throw (std::exception);
         void setNonBlocked(bool opt)                                    throw (std::exception);
         void setReuseAddr(int sd)                                       throw (std::exception);
