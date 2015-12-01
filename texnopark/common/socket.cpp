@@ -20,7 +20,7 @@ std::string int2ipv4(uint32_t ip)
     return buf;
 }
 
-int connect_impl(const char* host, int port)
+struct sockaddr_in resolve(const char* host, int port)
 {
     struct hostent* hp = gethostbyname(host);
     if (NULL == hp)
@@ -46,27 +46,23 @@ int connect_impl(const char* host, int port)
     addr.sin_port = htons(port);
     memcpy(&addr.sin_addr, hp->h_addr, hp->h_length);
 
-    int sd = socket(/*Protocol Family*/PF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (sd <= 0)
-        throw std::runtime_error("error to create socket: " + std::string(strerror(errno)));
-
-    int connected = connect(sd, (struct sockaddr*)&addr, sizeof(addr));
-    if (connected == -1)
-    {
-        throw std::runtime_error("connect error: " + std::string(strerror(errno)));
-        close(sd);
-    }
-
-    return sd;
+    return addr;
 }
+
+void set_non_blocked_impl(int sd, bool opt) throw (std::exception)
+{
+    int flags = fcntl(sd, F_GETFL, 0);
+    int new_flags = (opt)? (flags | O_NONBLOCK) : (flags & ~O_NONBLOCK);
+    if (fcntl(sd, F_SETFL, new_flags) == -1)
+        throw std::runtime_error("make nonblocked: " + std::string(strerror(errno)));
+}
+
+
 }   // namespace
 
 void Socket::setNonBlocked(bool opt) throw (std::exception)
 {
-    int flags = fcntl(m_Sd, F_GETFL, 0);
-    int new_flags = (opt)? (flags | O_NONBLOCK) : (flags & ~O_NONBLOCK);
-    if (fcntl(m_Sd, F_SETFL, new_flags) == -1)
-        throw std::runtime_error("make nonblocked: " + std::string(strerror(errno)));
+    set_non_blocked_impl(m_Sd, opt);
 }
 
 void Socket::setRcvTimeout(int sec, int microsec) throw (std::exception)
@@ -92,8 +88,56 @@ void Socket::setReuseAddr(int sd) throw (std::exception)
 
 void Socket::connect(const std::string &host, int port) throw (std::exception)
 {
-    m_Sd = connect_impl(host.data(), port);
+    struct sockaddr_in addr = resolve(host.data(), port);
+
+    int sd = socket(/*Protocol Family*/PF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (sd <= 0)
+        throw std::runtime_error("error to create socket: " + std::string(strerror(errno)));
+
+    int connected = ::connect(sd, (struct sockaddr*)&addr, sizeof(addr));
+    if (connected == -1)
+    {
+        ::close(sd);
+        throw std::runtime_error("connect error: " + std::string(strerror(errno)));
+    }
+
+    m_Sd = sd;
 }
+
+void Socket::connect(const std::string &host, int port, int timeout) throw (std::exception)
+{
+    struct sockaddr_in addr = resolve(host.data(), port);
+
+    int sd = socket(/*Protocol Family*/PF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (sd <= 0)
+        throw std::runtime_error("error to create socket: " + std::string(strerror(errno)));
+
+    set_non_blocked_impl(sd, true);
+
+    int connected = ::connect(sd, (struct sockaddr*)&addr, sizeof(addr));
+    if (connected == -1 && errno != EINPROGRESS)
+    {
+        ::close(sd);
+        throw std::runtime_error("connect error: " + std::string(strerror(errno)));
+    }
+
+    fd_set write_fds;
+    FD_ZERO(&write_fds);
+    FD_SET(sd, &write_fds);
+    struct timeval tm;
+    tm.tv_sec = timeout;
+    tm.tv_usec = 0;
+    int sel = select(sd + 1, /*read*/NULL, /*write*/&write_fds, /*exceptions*/NULL, &tm);
+
+    if (sel != 1)
+    {
+        ::close(sd);
+        throw std::runtime_error("connect timeout");
+    }
+
+    m_Sd = sd;
+}
+
 
 void Socket::send(const std::string &str) throw (std::exception)
 {

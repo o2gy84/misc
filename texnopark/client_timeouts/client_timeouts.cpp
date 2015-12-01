@@ -19,10 +19,10 @@ int main(int argc, char *argv[])
         int port = std::stoi(argv[2]);
 
         Socket s;
-        s.setNonBlocked(true);
-        s.connect(host, port);
-
-        std::cerr << "errno: " << errno << " [" << strerror(errno) << "]\n";
+        s.connect(host, port, /*timeout, sec*/5);
+        // Проверка что таймаут работает:
+        // google.com 81
+        // 192.168.0.0, 10.255.255.1, 192.168.255.255 e.t.c - existing, but no routed hosts
 
     }
     catch(const std::exception &e)
