@@ -10,15 +10,17 @@
 
 #include "socket.hpp"
 
-namespace 
-{
-
+// global
 std::string int2ipv4(uint32_t ip)
 {
     char buf[128];
     snprintf(buf, sizeof(buf), "%u.%u.%u.%u", ip&0xFF, (ip&0xFF00) >> 8, (ip&0xFF0000) >> 16, (ip&0xFF000000) >> 24);
     return buf;
 }
+
+
+namespace 
+{
 
 struct sockaddr_in resolve(const char* host, int port)
 {
