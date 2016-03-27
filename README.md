@@ -1,2 +1,2 @@
 # misc
-Code snippets, interesting thinks, experiments e.t.c.
+Code snippets, interesting things, experiments e.t.c.
