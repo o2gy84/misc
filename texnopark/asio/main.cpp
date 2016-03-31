@@ -43,7 +43,7 @@ class Client: public std::enable_shared_from_this<Client>
     public:
         Client(boost::asio::io_service &io) : m_Sock(io) {}
         boost::asio::ip::tcp::socket& sock()             { return m_Sock; }
-        void asyncRead()
+        void read()
         {   
             m_Sock.async_read_some(boost::asio::buffer(m_Buf),
                         boost::bind(&Client::handleRead, shared_from_this(),
@@ -58,7 +58,7 @@ class Client: public std::enable_shared_from_this<Client>
             m_Sock.async_write_some(boost::asio::buffer(m_Buf),
                         [](const boost::system::error_code& e, std::size_t bytes_transferred)->void {}
             );
-            asyncRead();
+            read();
         }
 };
 
@@ -69,7 +69,7 @@ class Server {
     void onAccept(std::shared_ptr<Client> c, const boost::system::error_code& e) {
         if (e) return;
         std::cerr << "+client: " << c->sock().remote_endpoint().address().to_string().c_str() << std::endl;
-        c->asyncRead();
+        c->read();
         startAccept();
     }
     void startAccept() {
