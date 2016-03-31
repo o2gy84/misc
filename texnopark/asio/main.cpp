@@ -53,12 +53,19 @@ class Client: public std::enable_shared_from_this<Client>
         }
         void handleRead(const boost::system::error_code& e, std::size_t bytes_transferred)
         {
+            if (e == boost::asio::error::eof)
+            {
+                std::cerr << "-client: " << m_Sock.remote_endpoint().address().to_string() << std::endl;
+            }
             if (e) return;
             std::cerr << "read: " << bytes_transferred << " bytes" << std::endl;
             m_Sock.async_write_some(boost::asio::buffer(m_Buf),
-                        [](const boost::system::error_code& e, std::size_t bytes_transferred)->void {}
+                        [self = shared_from_this()](const boost::system::error_code& e, std::size_t bytes_transferred)->void
+                        {
+                            // После того, как запишем ответ, можно снова читать
+                            self->read();
+                        }
             );
-            read();
         }
 };
 
