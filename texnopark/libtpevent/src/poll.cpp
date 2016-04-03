@@ -18,6 +18,7 @@
 #include <vector>
 #include <thread>
 #include <algorithm>
+#include <string>
 
 #include "poll.hpp"
 

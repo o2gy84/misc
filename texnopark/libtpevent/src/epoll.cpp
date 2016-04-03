@@ -15,6 +15,7 @@
 #include <set>
 #include <thread>
 #include <algorithm>
+#include <string>
 
 #include "epoll.hpp"
 

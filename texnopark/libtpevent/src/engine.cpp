@@ -3,9 +3,10 @@
 #include <netinet/in.h> // htons(), INADDR_ANY
 #include <string.h>     // memset()
 #include <unistd.h>     // close()
-
+#include <errno.h>
 
 #include <stdexcept>
+#include <string>
 
 #include "engine.hpp"
 

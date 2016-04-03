@@ -1,6 +1,7 @@
 #include <vector>
 #include <mutex>
 #include <queue>
+#include <string>
 
 #include "engine.hpp"
 
