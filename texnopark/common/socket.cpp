@@ -206,7 +206,13 @@ bool parse_protocol(const std::string &buf, size_t &bytes_left)
 std::string Socket::recv() throw (std::exception)
 {
     char buf[256];
+#ifdef __APPLE__
+    // mac os x don't defines MSG_NOSIGNAL
+    int n = ::recv(m_Sd, buf, sizeof(buf), 0);
+#else
     int n = ::recv(m_Sd, buf, sizeof(buf), MSG_NOSIGNAL);
+#endif
+
     if (-1 == n && errno != EAGAIN)
         throw std::runtime_error("read failed: " + std::string(strerror(errno)));
     if (0 == n)
