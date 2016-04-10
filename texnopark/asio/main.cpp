@@ -89,12 +89,15 @@ public:
     Server() : m_Acceptor(m_Service)    {}
 
     void startServer() {
-        boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v4(), 5001);
+        int port = 5001;
+        boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::tcp::v4(), port);
         m_Acceptor.open(endpoint.protocol());
         m_Acceptor.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
         m_Acceptor.bind(endpoint);
         m_Acceptor.listen(1024);
         startAccept();
+
+        std::cerr << "listen on port: " << port << std::endl;
 
         std::vector<std::thread> threads;
         for (int i = 0; i < 4; ++i)
