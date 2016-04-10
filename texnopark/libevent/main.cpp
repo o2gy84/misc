@@ -115,6 +115,8 @@ int main( int argc, char **argv )
         return -1;
     }
 
+    std::cerr << "start listen on port: " << port << std::endl;
+
     evconnlistener_set_error_cb(listener, accept_error_cb);
     event_base_dispatch(base);
     return 0;
