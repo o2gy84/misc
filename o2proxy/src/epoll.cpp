@@ -367,7 +367,7 @@ void EpollEngine::eventLoop()
                 if (r > 0)
                 {
                     std::cerr << "read from firefox: " << r << " bytes:\n";
-                    std::cerr << "buf:\n" << buf << "\n";
+                    //std::cerr << "buf:\n" << buf << "\n";
 
                     if (cs->sd_ssl_proxy > 0)
                     {
@@ -427,24 +427,6 @@ void EpollEngine::eventLoop()
 
                                 cs->sd_ssl_proxy = timed_connect(host, std::stoi(port), 10);
                                 std::cerr << "CONNECT: " << host << ":" << port << ", ssl_proxy_sd: " << cs->sd_ssl_proxy << "\n";
-
-                               /*
-                                int sd = timed_connect(host, std::stoi(port), 10);
-                                int rc = send(sd, cs->_req.toString());
-                                if (rc <= 0)
-                                {
-                                    std::cerr << "send error :(\n";
-                                }
-                                else
-                                {
-                                    std::cerr << "send rc: " << rc << " bytes\n";
-                                }
-                                std::string resp = recv_http(sd);
-                                std::cerr << "recv rc: " << resp.size() << "\n";
-
-                                cs->_resp.append(resp);
-                                cs->_resp.dump();
-                                */
                             }
                             else
                             {
@@ -462,6 +444,126 @@ void EpollEngine::eventLoop()
                                 std::cerr << "recv rc: " << resp.size() << "\n";
 
                                 cs->_resp.append(resp);
+
+                                if (cs->_resp._chunked)
+                                {
+                                    //std::cerr << "HEADERS WITH CHUNKED:\n";
+                                    //std::cerr << cs->_resp._headers.toString();
+
+                                    size_t chunk_size = cs->_resp._chunk_size;
+                                    size_t cur_body_size = cs->_resp._body.size();
+
+                                    if (chunk_size > cur_body_size)
+                                    {
+                                        std::string chunk = recv_bytes(sd, chunk_size - cur_body_size);
+                                        std::cerr << "read chunk: " << chunk.size() << " bytes\n";
+                                        cs->_resp.append(chunk);
+                                    }
+                                    else
+                                    {
+                                        // скачали весь чанк типа?
+                                        std::string chunk_to_ff = cs->_resp._content;
+                                        int rc = send(cs->sd, chunk_to_ff);
+                                        if (rc <= 0)
+                                        {
+                                            std::cerr << "back to firefox send error :(\n";
+                                        }
+                                        else
+                                        {
+                                            std::cerr << "back to firefox send chunk: " << rc << " bytes\n";
+                                        }
+
+                                        std::cerr << "CONTINUE AFTER CHUNKED\n";
+                                        cs->_req.clear();
+                                        cs->_resp.clear();
+                                        continue;
+                                    }
+
+                                    std::string crlf = recv_bytes(sd, 2);
+                                    if (crlf != "\r\n")
+                                        throw std::runtime_error("pizdec1");
+
+                                    {
+                                        std::string chunk_to_ff = cs->_resp._content + "\r\n";
+                                        int rc = send(cs->sd, chunk_to_ff);
+                                        if (rc <= 0)
+                                        {
+                                            std::cerr << "back to firefox send error :(\n";
+                                        }
+                                        else
+                                        {
+                                            std::cerr << "back to firefox send chunk: " << rc << " bytes\n";
+                                        }
+                                    }
+
+                                    std::string next_chunk_size;
+                                    while (1)
+                                    {
+                                        std::string next_char = recv_bytes(sd, 1);
+                                        next_chunk_size += next_char;
+
+                                        if (utils::ends_with(next_chunk_size, "\r\n"))
+                                        {
+                                            next_chunk_size.pop_back();
+                                            next_chunk_size.pop_back();
+
+                                            size_t chunk_size = std::stoi(next_chunk_size, nullptr, 16);
+                                            std::cerr << "sz hex: " << next_chunk_size << ", sz dec: " << chunk_size << "\n";
+
+                                            if (chunk_size == 0)
+                                            {
+                                                std::string unused_crlf = recv_bytes(sd, 2);
+                                                if (unused_crlf != "\r\n")
+                                                    throw std::runtime_error("pizdec2");
+
+                                                std::string chunk_to_ff = "0\r\n\r\n";
+                                                int rc = send(cs->sd, chunk_to_ff);
+                                                if (rc <= 0)
+                                                {
+                                                    std::cerr << "back to firefox send error :(\n";
+                                                }
+                                                else
+                                                {
+                                                    std::cerr << "back to firefox send chunk: " << rc << " bytes\n";
+                                                }
+
+                                                break;
+                                            }
+
+                                            std::string chunk = recv_bytes(sd, chunk_size);
+                                            std::cerr << "chunk recv: " << chunk.size() << " bytes\n";
+                                            
+                                            std::string unused_crlf = recv_bytes(sd, 2);
+                                            if (unused_crlf != "\r\n")
+                                                throw std::runtime_error("pizdec3");
+
+                                            {
+                                                std::string chunk_to_ff = next_chunk_size + "\r\n" + chunk + "\r\n";
+                                                int rc = send(cs->sd, chunk_to_ff);
+                                                if (rc <= 0)
+                                                {
+                                                    std::cerr << "back to firefox send error :(\n";
+                                                }
+                                                else
+                                                {
+                                                    std::cerr << "back to firefox send chunk: " << rc << " bytes\n";
+                                                }
+                                            }
+
+                                            next_chunk_size = "";
+                                        }
+                                        else
+                                        {
+                                            continue;
+                                        }
+                                    }
+
+                                    std::cerr << "CONTINUE AFTER CHUNKED\n";
+                                    cs->_req.clear();
+                                    cs->_resp.clear();
+                                    continue;
+                                }
+
                                 cs->_resp.dump();
                             }
                         }

@@ -1,5 +1,6 @@
 #include <iostream>
 #include <algorithm>
+#include <string.h>
 
 #include "utils.hpp"
 
@@ -46,8 +47,20 @@ namespace utils
 
     bool starts_with(const std::string &s, const std::string &predicate)
     {
-        return 1;
-        //return boost::starts_with(s, predicate);
+        if (strncmp(s.data(), predicate.data(), predicate.size()) == 0)
+            return true;
+        return false;
+    }
+
+    bool ends_with(const std::string &s, const std::string &predicate)
+    {
+        if (s.size() < predicate.size())
+            return false;
+
+        if (strncmp(s.data() + s.size() - predicate.size(), predicate.data(), predicate.size()) == 0)
+            return true;
+
+        return false;
     }
 
     std::string lowercased(const std::string &str)

@@ -89,7 +89,8 @@ HttpRequest::HttpRequest()
 {
     _request_valid = false;
     _headers_ready = false;
-
+    _chunked = false;
+    _chunk_size = 0;
 }
 
 
@@ -133,6 +134,9 @@ void HttpRequest::clear()
 
     _headers_ready = false;
     _request_valid = false;
+    _chunked = false;
+    _chunk_size = 0;
+
 }
 
 void HttpRequest::append(const std::string &str)
@@ -165,6 +169,20 @@ void HttpRequest::append(const std::string &str)
     std::string headers = _content.substr(0, pos);
     _headers.fromString(headers);
     _headers_ready = true;
+
+    std::string transfer_enc = _headers.header("Transfer-Encoding");
+    if (transfer_enc == "chunked")
+    {
+        _chunked = true;
+        size_t start_block = pos + 4;
+        size_t start_chunk = _content.find("\r\n", start_block);
+        std::string chunk_sz = _content.substr(start_block, start_chunk - start_block);
+
+        _chunk_size = std::stoi(chunk_sz, nullptr, 16);
+        _body.append(str.begin() + start_chunk + 2, str.end());
+        return;
+    }
+
 
     std::string content_len = _headers.header("Content-Length");
     _headers._content_len = 0;

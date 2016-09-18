@@ -47,4 +47,7 @@ struct HttpRequest
 
     bool _headers_ready;
     bool _request_valid;
+    bool _chunked;
+    size_t _chunk_size;
+
 };
