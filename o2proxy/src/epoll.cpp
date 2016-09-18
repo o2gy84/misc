@@ -181,7 +181,7 @@ namespace
 
     std::string recv(int sd) noexcept
     {
-        char buf[256];
+        char buf[65536];
 #ifdef __APPLE__
         // mac os x don't defines MSG_NOSIGNAL
         int n = ::recv(sd, buf, sizeof(buf), 0);
@@ -190,11 +190,18 @@ namespace
 #endif
 
         if (-1 == n && errno != EAGAIN)
+        {
             throw std::runtime_error("read failed: " + std::string(strerror(errno)));
+        }
         if (0 == n)
-            throw std::runtime_error("client: " + std::to_string(sd) + " disconnected");
+        {
+            std::cerr << "client: " + std::to_string(sd) << " disconnected\n";
+            return "";
+        }
         if (-1 == n)
+        {
             throw std::runtime_error("client: " + std::to_string(sd) + " timeouted");
+        }
 
         std::string ret(buf, buf + n);
         return ret;
@@ -346,7 +353,7 @@ void EpollEngine::eventLoop()
 
                 int sock = cs->sd;
 
-                char buf[1024];
+                char buf[65536];
                 int r = read(sock, buf, sizeof(buf));
                 buf[r] = '\0';
 
@@ -360,7 +367,34 @@ void EpollEngine::eventLoop()
                 if (r > 0)
                 {
                     std::cerr << "read from firefox: " << r << " bytes:\n";
-                    //std::cerr << "buf:\n" << buf << "\n";
+                    std::cerr << "buf:\n" << buf << "\n";
+
+                    if (cs->sd_ssl_proxy > 0)
+                    {
+                        int rc = send(cs->sd_ssl_proxy, std::string(buf, buf + r));
+                        if (rc <= 0)
+                        {
+                            std::cerr << "ssl send error :(\n";
+                        }
+                        else
+                        {
+                            std::cerr << "ssl send rc: " << rc << " bytes\n";
+                        }
+                        std::string resp = timed_recv(cs->sd_ssl_proxy, 3);
+                        std::cerr << "ssl recv rc: " << resp.size() << "\n";
+
+
+                        rc = send(cs->sd, resp);
+                        if (rc <= 0)
+                        {
+                            std::cerr << "back to firefox send error :(\n";
+                        }
+                        else
+                        {
+                            std::cerr << "back to firefox send rc: " << rc << " bytes\n";
+                        }
+                        continue;
+                    }
 
                     cs->_req.append(std::string(buf, buf + r));
 
@@ -370,24 +404,69 @@ void EpollEngine::eventLoop()
 
                         {
                             cs->_req.dump();
-                            //std::cerr << cs->_req._headers.toString();
-
-                            int sd = timed_connect(cs->_req._headers.header("Host"), 80, 10);
-                            int rc = send(sd, cs->_req.toString());
-                            if (rc <= 0)
+    
+                            if (cs->_req._headers._method == "CONNECT")
                             {
-                                std::cerr << "send error :(\n";
+                                cs->_resp.append("HTTP/1.1 200 OK\r\n\r\n");
+                                cs->_resp.dump();
+
+                                std::string host;
+                                std::string port;
+                                std::vector<std::string> host_port = utils::split(cs->_req._headers.header("Host"), ":");
+
+                                if (host_port.size() != 2)
+                                {
+                                    host = cs->_req._headers.header("Host");
+                                    port = "80";
+                                }
+                                else
+                                {
+                                    host = host_port[0];
+                                    port = host_port[1];
+                                }
+
+                                cs->sd_ssl_proxy = timed_connect(host, std::stoi(port), 10);
+                                std::cerr << "CONNECT: " << host << ":" << port << ", ssl_proxy_sd: " << cs->sd_ssl_proxy << "\n";
+
+                               /*
+                                int sd = timed_connect(host, std::stoi(port), 10);
+                                int rc = send(sd, cs->_req.toString());
+                                if (rc <= 0)
+                                {
+                                    std::cerr << "send error :(\n";
+                                }
+                                else
+                                {
+                                    std::cerr << "send rc: " << rc << " bytes\n";
+                                }
+                                std::string resp = recv_http(sd);
+                                std::cerr << "recv rc: " << resp.size() << "\n";
+
+                                cs->_resp.append(resp);
+                                cs->_resp.dump();
+                                */
                             }
                             else
                             {
-                                std::cerr << "send rc: " << rc << " bytes\n";
-                            }
-                            std::string resp = recv_http(sd);
-                            std::cerr << "recv rc: " << resp.size() << "\n";
+                                int sd = timed_connect(cs->_req._headers.header("Host"), 80, 10);
+                                int rc = send(sd, cs->_req.toString());
+                                if (rc <= 0)
+                                {
+                                    std::cerr << "send error :(\n";
+                                }
+                                else
+                                {
+                                    std::cerr << "send rc: " << rc << " bytes\n";
+                                }
+                                std::string resp = recv_http(sd);
+                                std::cerr << "recv rc: " << resp.size() << "\n";
 
-                            cs->_resp.append(resp);
-                            cs->_resp.dump();
+                                cs->_resp.append(resp);
+                                cs->_resp.dump();
+                            }
                         }
+
+                        cs->_req.clear();
 
                         cs->state = client_state_t::WANT_WRITE;
                         bool ret = set_desire_events(epfd, sock, EPOLLOUT, cs);
@@ -416,6 +495,8 @@ void EpollEngine::eventLoop()
 
                 write(cs->sd, resp.data(), resp.size());
                 cs->state = client_state_t::WANT_READ;
+
+                cs->_resp.clear();
 
                 bool ret = set_desire_events(epfd, cs->sd, EPOLLIN, cs);
                 if (!ret) throw std::runtime_error(std::string("epoll_ctl error: ") + strerror(errno));

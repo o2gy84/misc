@@ -18,6 +18,8 @@ struct HttpHeaders
     }
 
     bool hasHeader(const std::string &hdr) const { return !header(hdr).empty(); }
+    void clear();
+
 
     std::map<std::string, std::string> _headers;
     std::string _method;
@@ -37,6 +39,7 @@ struct HttpRequest
 
     std::string toString() const;
     void dump() const;
+    void clear();
 
     HttpHeaders _headers;
     std::string _content;

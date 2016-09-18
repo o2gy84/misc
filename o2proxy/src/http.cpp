@@ -9,8 +9,13 @@
 std::string HttpHeaders::toString() const
 {
     std::stringstream ss;
-    ss << _method << " " << _resource << " " << _version << "\r\n";
-    
+    ss << _method << " " << _resource << " " << _version;
+
+    if (_headers.size())
+    {
+        ss << "\r\n";
+    }
+
     size_t counter = 0;
     for (auto h = _headers.begin(); h != _headers.end(); ++h)
     {
@@ -71,6 +76,15 @@ void HttpHeaders::fromString(const std::string &str)
     }
 }
 
+void HttpHeaders::clear()
+{
+    std::map<std::string, std::string>().swap(_headers);
+    _method = "";
+    _resource = "";
+    _version = "";
+    _content_len = 0;
+}
+
 HttpRequest::HttpRequest()
 {
     _request_valid = false;
@@ -98,12 +112,28 @@ void HttpRequest::dump() const
 {
     std::cerr << "<<<DUMP START>>>\n";
     std::string hdr = _headers.toString();
-    std::cerr << hdr << "\n";
+    std::cerr << hdr;
+
+    if (hdr.back() != '\n')
+    {
+        std::cerr << "\n";
+    }
+
     std::cerr << "headers: " << hdr.size() << " bytes, body: " << _body.size() 
               << " bytes, total: " << hdr.size() + _body.size() << " bytes\n";
     std::cerr << "<<<DUMP END>>>\n";
 }
 
+void HttpRequest::clear()
+{
+    _headers.clear();
+
+    _content = "";
+    _body = "";
+
+    _headers_ready = false;
+    _request_valid = false;
+}
 
 void HttpRequest::append(const std::string &str)
 {
@@ -124,6 +154,7 @@ void HttpRequest::append(const std::string &str)
     }
 
     size_t pos = _content.find("\r\n\r\n");
+
     if (pos == std::string::npos)
     {
         // need more bytes

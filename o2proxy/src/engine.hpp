@@ -15,8 +15,8 @@ enum class client_state_t: uint8_t
 */
 struct Client
 {
-        explicit Client(int _sd)               : sd(_sd), state(client_state_t::WANT_READ) {}
-        Client(int _sd, client_state_t _state) : sd(_sd), state(_state) {}
+        explicit Client(int _sd)               : sd(_sd), state(client_state_t::WANT_READ), sd_ssl_proxy(-1) {}
+        Client(int _sd, client_state_t _state) : sd(_sd), state(_state), sd_ssl_proxy(-1) {}
 
         int sd;
         client_state_t state;
@@ -24,6 +24,8 @@ struct Client
         // TODO: abstract protocol
         HttpRequest _req;
         HttpRequest _resp;
+
+        int sd_ssl_proxy;
 };
 
 class Engine
