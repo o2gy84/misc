@@ -121,7 +121,7 @@ void HttpRequest::dump() const
     }
 
     std::cerr << "headers: " << hdr.size() << " bytes, body: " << _body.size() 
-              << " bytes, total: " << hdr.size() + _body.size() << " bytes\n";
+              << " bytes, total: " << hdr.size() + _body.size() << " bytes (without \\r\\n\\r\\n)\n";
     std::cerr << "<<<DUMP END>>>\n";
 }
 

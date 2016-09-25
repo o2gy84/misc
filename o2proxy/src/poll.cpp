@@ -73,9 +73,9 @@ void PollEngine::manageConnections()
 
         for (size_t i = 0; i < m_Clients.size(); ++i)
         {
-            fds[i].fd = m_Clients[i].sd;
+            fds[i].fd = m_Clients[i]._sd;
 
-            if (m_Clients[i].state == client_state_t::WANT_READ)
+            if (m_Clients[i]._state == client_state_t::WANT_READ)
                 fds[i].events = POLLIN;
             else
                 fds[i].events = POLLOUT;
@@ -107,7 +107,7 @@ void PollEngine::manageConnections()
             }
             else if (fds[i].revents & POLLIN)
             {
-                if (m_Clients[i].state != client_state_t::WANT_READ)
+                if (m_Clients[i]._state != client_state_t::WANT_READ)
                     continue;
 
                 char buf[256];
@@ -129,7 +129,7 @@ void PollEngine::manageConnections()
                 if (r > 0)
                 {
                     std::cerr << "read: " << r << " bytes [" << tmp.c_str() << "]\n";
-                    m_Clients[i].state = client_state_t::WANT_WRITE;
+                    m_Clients[i]._state = client_state_t::WANT_WRITE;
                 }
 
                 if (r == 0)
@@ -141,12 +141,12 @@ void PollEngine::manageConnections()
             }
             else if (fds[i].revents & POLLOUT)
             {
-                if (m_Clients[i].state != client_state_t::WANT_WRITE)
+                if (m_Clients[i]._state != client_state_t::WANT_WRITE)
                     continue;
 
                 char buf[] = "hello from server!\n";
                 write(fds[i].fd, buf, sizeof(buf));
-                m_Clients[i].state = client_state_t::WANT_READ;
+                m_Clients[i]._state = client_state_t::WANT_READ;
             }
             else if (fds[i].revents & POLLNVAL)
             {
@@ -167,7 +167,7 @@ void PollEngine::manageConnections()
         for (size_t i = 0; i< disconnected_clients.size(); ++i)
         {
             int sd = disconnected_clients[i];
-            auto f = [&sd](const Client &state) { return state.sd == sd; };
+            auto f = [&sd](const Client &state) { return state._sd == sd; };
             auto iterator = std::find_if(m_Clients.begin(), m_Clients.end(), f);
             assert(iterator != m_Clients.end());
             m_Clients.erase(iterator);

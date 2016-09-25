@@ -27,8 +27,8 @@ void SelectEngine::manageConnections()
 
         for (auto i: m_Clients)
         {
-            if (i.sd > fdmax) fdmax = i.sd;
-            FD_SET(i.sd, &read_fds);
+            if (i._sd > fdmax) fdmax = i._sd;
+            FD_SET(i._sd, &read_fds);
         }
 
         int sel = select(fdmax + 1, /*read*/&read_fds, /*write*/NULL, /*exceptions*/NULL, /*timeout*/NULL);
@@ -39,10 +39,10 @@ void SelectEngine::manageConnections()
 
         for (size_t i = 0; i < m_Clients.size(); ++i)
         {
-            if (!FD_ISSET(m_Clients[i].sd, &read_fds))
+            if (!FD_ISSET(m_Clients[i]._sd, &read_fds))
                 continue;
 
-            if (m_Clients[i].sd == listener())
+            if (m_Clients[i]._sd == listener())
             {
                 struct sockaddr_in client;
                 memset(&client, 0, sizeof(client));
@@ -59,12 +59,12 @@ void SelectEngine::manageConnections()
             else
             {
                 char buf[256];
-                int r = read(m_Clients[i].sd, buf, sizeof(buf));
+                int r = read(m_Clients[i]._sd, buf, sizeof(buf));
 
                 if (r < 0)
                 {
                     std::cerr << "some read error!\n";
-                    disconnected_clients.push_back(m_Clients[i].sd);
+                    disconnected_clients.push_back(m_Clients[i]._sd);
                     continue;
                 }
                 buf[r] = '\0';
@@ -77,13 +77,13 @@ void SelectEngine::manageConnections()
                 {
                     std::cerr << "read: " << r << " bytes [" << tmp.c_str() << "]\n";
                     std::string ans = "echo: " + tmp + "\n";
-                    write(m_Clients[i].sd, ans.data(), ans.size());
+                    write(m_Clients[i]._sd, ans.data(), ans.size());
                 }
 
                 if (r == 0)
                 {
-                    std::cerr << "client disconnected: " << m_Clients[i].sd << "\n";
-                    disconnected_clients.push_back(m_Clients[i].sd);
+                    std::cerr << "client disconnected: " << m_Clients[i]._sd << "\n";
+                    disconnected_clients.push_back(m_Clients[i]._sd);
                 }
             }
         }
@@ -92,7 +92,7 @@ void SelectEngine::manageConnections()
         for (size_t i = 0; i< disconnected_clients.size(); ++i)
         {
             int sd = disconnected_clients[i];
-            auto f = [&sd](const Client &state) { return state.sd == sd; };
+            auto f = [&sd](const Client &state) { return state._sd == sd; };
             auto iterator = std::find_if(m_Clients.begin(), m_Clients.end(), f);
             assert(iterator != m_Clients.end());
 

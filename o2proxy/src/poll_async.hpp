@@ -4,6 +4,7 @@
 #include <string>
 
 #include "engine.hpp"
+#include "client.hpp"
 
 class EventLoop
 {
@@ -69,4 +70,7 @@ class AsyncPollEngine: public Engine
     public:
         explicit AsyncPollEngine(int port): Engine(port) {}
         virtual void run() override;
+        virtual void addToEventLoop(Client *c, event_t events) override {};
+        virtual void changeEvents(Client *c, event_t events) override {};
+
 };

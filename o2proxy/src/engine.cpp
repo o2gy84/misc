@@ -10,7 +10,7 @@
 
 #include "engine.hpp"
 
-static const uint32_t kListenQueueSize = 25;
+static const uint32_t kListenQueueSize = 1024;
 
 Engine::Engine(int port)
 {

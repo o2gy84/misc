@@ -21,8 +21,8 @@ namespace
         std::stringstream ss;
         ss << std::endl << "\tUsage: " 
             << progname << " "
-            << "-" << opt_port << " port "
-            << "-" << opt_cfg << " path"
+            << opt_port << " port "
+            << opt_cfg << " path"
             << std::endl << std::endl;
 
         ss  << "\t" << opt_port << ": 1025..65536" << std::endl

@@ -73,11 +73,12 @@ void Connection::writeHandler(int error)
 
 // EVENT LOOP
 
+
 void EventLoop::deleteClient(int sd)
 {
     std::unique_lock<std::mutex> lock(m_WantWorkQueueMutex);                        // without this lock it fault very easy
 
-    auto f = [&sd](const Event &event) { return event._client.sd == sd; };
+    auto f = [&sd](const Event &event) { return event._client._sd == sd; };
     auto iterator = std::find_if(m_ClientsWantWork.begin(), m_ClientsWantWork.end(), f);
     std::cerr << "delete: " << sd << "\n";
     assert(iterator != m_ClientsWantWork.end());
@@ -124,9 +125,9 @@ int EventLoop::manageConnections()
 
         for (size_t i = 0; i < m_ClientsWantWork.size(); ++i)
         {
-            fds[i].fd = m_ClientsWantWork[i]._client.sd;
+            fds[i].fd = m_ClientsWantWork[i]._client._sd;
 
-            if (m_ClientsWantWork[i]._client.state == client_state_t::WANT_READ)
+            if (m_ClientsWantWork[i]._client._state == client_state_t::WANT_READ)
                 fds[i].events = POLLIN;
             else
                 fds[i].events = POLLOUT;
@@ -159,7 +160,7 @@ int EventLoop::manageConnections()
             }
             else if (fds[i].revents & POLLIN)
             {
-                if (m_ClientsWantWork[i]._client.state != client_state_t::WANT_READ)
+                if (m_ClientsWantWork[i]._client._state != client_state_t::WANT_READ)
                     continue;
                
                 {
@@ -170,7 +171,7 @@ int EventLoop::manageConnections()
             }
             else if (fds[i].revents & POLLOUT)
             {
-                if (m_ClientsWantWork[i]._client.state != client_state_t::WANT_WRITE)
+                if (m_ClientsWantWork[i]._client._state != client_state_t::WANT_WRITE)
                     continue;
 
                 {
@@ -242,16 +243,16 @@ void EventLoop::run()
             m_ClientsHaveWork.pop();
         }
 
-        if (event._client.state == client_state_t::WANT_READ)
+        if (event._client._state == client_state_t::WANT_READ)
         {
             char buf[256];
-            int r = read(event._client.sd, buf, sizeof(buf));
+            int r = read(event._client._sd, buf, sizeof(buf));
 
             if (r < 0)
             {
                 std::cerr << "some read error!\n";
                 sleep(1);
-                close(event._client.sd);
+                close(event._client._sd);
                 continue;
             }
             buf[r] = '\0';
@@ -267,9 +268,9 @@ void EventLoop::run()
                 event._callback(errno);
             }
         }
-        else if (event._client.state == client_state_t::WANT_WRITE)
+        else if (event._client._state == client_state_t::WANT_WRITE)
         {
-            write(event._client.sd, event._data.get().c_str(), event._data.get().size());
+            write(event._client._sd, event._data.get().c_str(), event._data.get().size());
             event._callback(errno);
         }
         else

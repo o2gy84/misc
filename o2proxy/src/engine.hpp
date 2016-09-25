@@ -1,48 +1,45 @@
 #ifndef _ENGINE_HPP
 #define _ENGINE_HPP
 
-#include "http.hpp"
+#include <functional>
+#include "client.hpp"
 
-enum class client_state_t: uint8_t 
+enum class op_error_t: uint8_t
 {
-    WANT_READ,
-    WANT_WRITE
+    OP_EOF,
+    OP_HUP
 };
 
-
-/*
-    Client - is just an sd and state
-*/
-struct Client
+enum class event_t: uint8_t
 {
-        explicit Client(int _sd)               : sd(_sd), state(client_state_t::WANT_READ), sd_ssl_proxy(-1) {}
-        Client(int _sd, client_state_t _state) : sd(_sd), state(_state), sd_ssl_proxy(-1) {}
+    EV_IN,
+    EV_OUT
+};
 
-        int sd;
-        client_state_t state;
-
-        // TODO: abstract protocol
-        HttpRequest _req;
-        HttpRequest _resp;
-
-        int sd_ssl_proxy;
+struct OperationState
+{
+    size_t transferred;
+    op_error_t error;
 };
 
 class Engine
 {
-    public:
-        explicit Engine(int port);
-        ~Engine();
+public:
+    explicit Engine(int port);
+    ~Engine();
 
-        virtual void run() =0;
+    virtual void run() =0;
+    virtual void addToEventLoop(Client *c, event_t events) =0;
+    virtual void changeEvents(Client *c, event_t events) =0;
 
-        int listener() const { return m_Listener; }
+protected:
+    int listener() const { return m_Listener; }
 
-    private:
-        int listenSocket(uint32_t port, uint32_t listen_queue_size);
+private:
+    int listenSocket(uint32_t port, uint32_t listen_queue_size);
 
-    private:
-        int m_Listener;
+private:
+    int m_Listener;
 };
 
 
