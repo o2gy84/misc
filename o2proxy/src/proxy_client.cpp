@@ -273,6 +273,16 @@ namespace
 
 void ProxyClient::onRead(const std::string &str)
 {
+    if (_state != state::WANT_READ_FROM_CLI)
+    {
+        throw std::runtime_error("ProxyClient: wrong state");
+    }
+
+
+    // TODO: ???
+    //set_non_blocked_impl(_sd, false);
+
+
     std::cerr << "read from firefox: " << str.size() << " bytes:\n";
     //std::cerr << "buf:\n" << buf << "\n";
 
@@ -311,12 +321,12 @@ void ProxyClient::onRead(const std::string &str)
         // send
 
         {
-            _req.dump();
+            _req.dump("ProxyClient: onRead req");
 
             if (_req._headers._method == "CONNECT")
             {
                 _resp.append("HTTP/1.1 200 OK\r\n\r\n");
-                _resp.dump();
+                _resp.dump("ProxyClient: onRead resp");
 
                 std::string host;
                 std::string port;
@@ -334,8 +344,9 @@ void ProxyClient::onRead(const std::string &str)
                 }
 
                 int nbsd = non_blocked_connect(host, std::stoi(port));
-                Client *c = new ProxyClientToRemoteServer(nbsd, _ev, _sd, _req);
-                _ev->addToEventLoop(c, event_t::EV_OUT);
+                set_non_blocked_impl(nbsd, false);
+                Client *c = new ProxyClientToRemoteServer(nbsd, _ev, this, _req);
+                _ev->addToEventLoop(c, engine::event_t::EV_WRITE);
 
                 return;
             }
@@ -343,8 +354,11 @@ void ProxyClient::onRead(const std::string &str)
             if (_req._headers._method == "GET")
             {
                 int nbsd = non_blocked_connect(_req._headers.header("Host"), 80);
-                Client *c = new ProxyClientToRemoteServer(nbsd, _ev, _sd, _req);
-                _ev->addToEventLoop(c, event_t::EV_OUT);
+
+                // nonblocked socket never blocks, so epoll always returns immediately
+                set_non_blocked_impl(nbsd, false);
+                Client *c = new ProxyClientToRemoteServer(nbsd, _ev, this, _req);
+                _ev->addToEventLoop(c, engine::event_t::EV_WRITE);
                 return;
             }
             
@@ -368,154 +382,76 @@ void ProxyClient::onRead(const std::string &str)
 
 void ProxyClient::onWrite()
 {
-
     std::cerr << "ProxyClient onWrite\n";
 
+    if (_state == state::WANT_WRITE_TO_CLI)
+    {
+        _resp.dump("ProxyToBrowser: onWrite req");
+        int rc = send(_sd, _resp.toString());
+        if (rc <= 0)
+        {
+            std::cerr << "send error :(\n";
+        }
+        else
+        {
+            std::cerr << "send rc: " << rc << " bytes\n";
+        }
+
+        // TODO:
+        //if (_req.size - rc > 0)
+        //{
+            // послали не все, надо послать остаток
+        //}
+
+        _state = state::WANT_READ_FROM_CLI;
+        _ev->changeEvents(this, engine::event_t::EV_READ);
+        return;
+    }
 }
 
 
 void ProxyClientToRemoteServer::onRead(const std::string &str)
 {
-    std::cerr << "ProxyToRemoteServer onRead\n";
+    std::cerr << "ProxyToRemoteServer onRead: " << str.size() << " bytes\n";
+    //std::cerr << str << "\n";
 
     if (_state == state::WANT_READ_FROM_TARGET)
     {
+        _resp.append(str);
 
-        char buf[1024];
-        int n = ::recv(_sd, buf, sizeof(buf), MSG_NOSIGNAL);
-        
-        std::cerr << "read: " << n << " bytes\n";
+        if (_resp.valid())
+        {
+            std::cerr << "END VALID REQUEST\n";
+            if (_resp._chunked)
+            {
+                _resp._headers._headers["Content-Length"] = std::to_string(_resp._body.size());
+                _resp._headers._headers.erase("Transfer-Encoding");
+            }
+
+            m_cli->setResponse(_resp);
+            m_cli->setState(ProxyClient::state::WANT_WRITE_TO_CLI);
+            return;
+        }
+        else if (_resp._chunked)
+        {
+            _ev->changeEvents(this, engine::event_t::EV_READ);
+            return;
+        }
+        else
+        {
+            std::cerr << "NOT VALID!!!\n";
+            return;
+        }
 
 
         //std::string resp = recv_http(_sd);
         //std::cerr << "recv rc: " << resp.size() << "\n";
 
         //_resp.append(resp);
-        _resp.append(std::string(buf, buf + n));
+        //_resp.append(std::string(buf, buf + n));
 
-
-        if (_resp._chunked)
-        {
-            //std::cerr << "HEADERS WITH CHUNKED:\n";
-            //std::cerr << _resp._headers.toString();
-
-            size_t chunk_size = _resp._chunk_size;
-            size_t cur_body_size = _resp._body.size();
-
-            if (chunk_size > cur_body_size)
-            {
-                //std::string chunk = recv_bytes(sd, chunk_size - cur_body_size);
-                //std::cerr << "read chunk: " << chunk.size() << " bytes\n";
-                //_resp.append(chunk);
-            }
-            else
-            {
-                // скачали весь чанк типа?
-                std::string chunk_to_ff = _resp._content;
-                int rc = send(_sd, chunk_to_ff);
-                if (rc <= 0)
-                {
-                    std::cerr << "back to firefox send error :(\n";
-                }
-                else
-                {
-                    std::cerr << "back to firefox send chunk: " << rc << " bytes\n";
-                }
-
-                std::cerr << "CONTINUE AFTER CHUNKED\n";
-                _req.clear();
-                _resp.clear();
-                return;
-            }
-
-            std::string crlf = recv_bytes(_sd, 2);
-            if (crlf != "\r\n")
-                throw std::runtime_error("pizdec1");
-
-            {
-                std::string chunk_to_ff = _resp._content + "\r\n";
-                int rc = send(_sd, chunk_to_ff);
-                if (rc <= 0)
-                {
-                    std::cerr << "back to firefox send error :(\n";
-                }
-                else
-                {
-                    std::cerr << "back to firefox send chunk: " << rc << " bytes\n";
-                }
-            }
-
-            std::string next_chunk_size;
-            while (1)
-            {
-                std::string next_char = recv_bytes(_sd, 1);
-                next_chunk_size += next_char;
-
-                if (utils::ends_with(next_chunk_size, "\r\n"))
-                {
-                    next_chunk_size.pop_back();
-                    next_chunk_size.pop_back();
-
-                    size_t chunk_size = std::stoi(next_chunk_size, nullptr, 16);
-                    std::cerr << "sz hex: " << next_chunk_size << ", sz dec: " << chunk_size << "\n";
-
-                    if (chunk_size == 0)
-                    {
-                        std::string unused_crlf = recv_bytes(_sd, 2);
-                        if (unused_crlf != "\r\n")
-                            throw std::runtime_error("pizdec2");
-
-                        std::string chunk_to_ff = "0\r\n\r\n";
-                        int rc = send(_sd, chunk_to_ff);
-                        if (rc <= 0)
-                        {
-                            std::cerr << "back to firefox send error :(\n";
-                        }
-                        else
-                        {
-                            std::cerr << "back to firefox send chunk: " << rc << " bytes\n";
-                        }
-
-                        break;
-                    }
-
-                    std::string chunk = recv_bytes(_sd, chunk_size);
-                    std::cerr << "chunk recv: " << chunk.size() << " bytes\n";
-
-                    std::string unused_crlf = recv_bytes(_sd, 2);
-                    if (unused_crlf != "\r\n")
-                        throw std::runtime_error("pizdec3");
-
-                    {
-                        std::string chunk_to_ff = next_chunk_size + "\r\n" + chunk + "\r\n";
-                        int rc = send(_sd, chunk_to_ff);
-                        if (rc <= 0)
-                        {
-                            std::cerr << "back to firefox send error :(\n";
-                        }
-                        else
-                        {
-                            std::cerr << "back to firefox send chunk: " << rc << " bytes\n";
-                        }
-                    }
-
-                    next_chunk_size = "";
-                }
-                else
-                {
-                    continue;
-                }
-            }
-
-            std::cerr << "CONTINUE AFTER CHUNKED\n";
-            _req.clear();
-            _resp.clear();
-        }
-
-        _resp.dump();
         return;
     }
-
 }
 
 void ProxyClientToRemoteServer::onWrite()
@@ -534,8 +470,7 @@ void ProxyClientToRemoteServer::onWrite()
 
     if (_state == state::WANT_WRITE_FROM_CLI_TO_TARGET)
     {
-        std::cerr << "proxy sends\n";
-        _req.dump();
+        _req.dump("ProxyClientToRemoteServer: onWrite req");
         int rc = send(_sd, _req.toString());
         if (rc <= 0)
         {
@@ -546,8 +481,14 @@ void ProxyClientToRemoteServer::onWrite()
             std::cerr << "send rc: " << rc << " bytes\n";
         }
 
+        // TODO:
+        //if (_req.size - rc > 0)
+        //{
+            // послали не все, надо послать остаток
+        //}
+
         _state = state::WANT_READ_FROM_TARGET;
-        _ev->changeEvents(this, event_t::EV_IN);
+        _ev->changeEvents(this, engine::event_t::EV_READ);
         return;
     }
 

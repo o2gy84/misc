@@ -4,23 +4,28 @@
 #include <functional>
 #include "client.hpp"
 
-enum class op_error_t: uint8_t
+namespace engine
 {
-    OP_EOF,
-    OP_HUP
-};
+    enum class op_error_t: uint8_t
+    {
+        OP_EOF,
+        OP_HUP
+    };
 
-enum class event_t: uint8_t
-{
-    EV_IN,
-    EV_OUT
-};
+    // Абстрактные event'ы, за которыми должен уметь следить Engine
+    enum class event_t: uint8_t
+    {
+        EV_READ,
+        EV_WRITE
+    };
 
-struct OperationState
-{
-    size_t transferred;
-    op_error_t error;
-};
+    struct OperationState
+    {
+        size_t transferred;
+        op_error_t error;
+    };
+
+}
 
 class Engine
 {
@@ -29,8 +34,8 @@ public:
     ~Engine();
 
     virtual void run() =0;
-    virtual void addToEventLoop(Client *c, event_t events) =0;
-    virtual void changeEvents(Client *c, event_t events) =0;
+    virtual void addToEventLoop(Client *c, engine::event_t events) =0;
+    virtual void changeEvents(Client *c, engine::event_t events) =0;
 
 protected:
     int listener() const { return m_Listener; }

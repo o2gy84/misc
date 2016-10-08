@@ -32,17 +32,15 @@ struct HttpHeaders
 struct HttpRequest
 {
     HttpRequest();
-    //HttpRequest(const std::string &str);
     void append(const std::string &str);
 
     bool valid() const { return _request_valid; }
 
     std::string toString() const;
-    void dump() const;
+    void dump(const std::string &prefix) const;
     void clear();
 
     HttpHeaders _headers;
-    std::string _content;
     std::string _body;
 
     bool _headers_ready;
@@ -50,4 +48,9 @@ struct HttpRequest
     bool _chunked;
     size_t _chunk_size;
 
+private:
+    void processChunked(const std::string &str, std::string::size_type start_block);
+
+private:
+    std::string _headers_string;
 };

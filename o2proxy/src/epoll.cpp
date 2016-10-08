@@ -58,17 +58,17 @@ static void accept_action(int epfd, int listener, Engine *ev)
 
 }
 
-void EpollEngine::changeEvents(Client *c, event_t events)
+void EpollEngine::changeEvents(Client *c, engine::event_t events)
 {
     struct epoll_event ev;
     ev.data.ptr = c;
 
-    if (events == event_t::EV_IN)
+    if (events == engine::event_t::EV_READ)
     {
         ev.events = EPOLLIN;
         c->_state = client_state_t::WANT_READ;
     }
-    else if (events == event_t::EV_OUT)
+    else if (events == engine::event_t::EV_WRITE)
     {
         ev.events = EPOLLOUT;
         c->_state = client_state_t::WANT_WRITE;
@@ -84,18 +84,18 @@ void EpollEngine::changeEvents(Client *c, event_t events)
     return;
 }
 
-void EpollEngine::addToEventLoop(Client *c, event_t events)
+void EpollEngine::addToEventLoop(Client *c, engine::event_t events)
 {
     struct epoll_event cli_ev;
     memset(&cli_ev, 0, sizeof(struct epoll_event));
     cli_ev.data.ptr = c;
 
-    if (events == event_t::EV_IN)
+    if (events == engine::event_t::EV_READ)
     {
         cli_ev.events = EPOLLIN;
         c->_state = client_state_t::WANT_READ;
     }
-    else if (events == event_t::EV_OUT)
+    else if (events == engine::event_t::EV_WRITE)
     {
         cli_ev.events = EPOLLOUT;
         c->_state = client_state_t::WANT_WRITE;
@@ -131,15 +131,15 @@ void EpollEngine::eventLoop()
         std::vector<Client*> disconnected_clients;
         int epoll_ret = epoll_wait (_epoll_fd, events, max_epoll_clients, -1);
 
-        std::cerr << "epoll_ret: " << epoll_ret << "\n";
+        //std::cerr << "epoll_ret: " << epoll_ret << "\n";
 
         if (epoll_ret == 0) continue;
         if (epoll_ret == -1) throw std::runtime_error(std::string("poll: ") + strerror(errno));
   
         for (int i = 0; i < epoll_ret; ++i)
         {
-            std::cerr << "test: " << events[i].data.fd  << ", " << (void*)events[i].data.ptr << "\n";
-            sleep(1);
+            //std::cerr << "test: " << events[i].data.fd  << ", " << (void*)events[i].data.ptr << "\n";
+            //sleep(1);
 
             if (events[i].data.fd == listener())
             {

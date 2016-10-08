@@ -8,8 +8,8 @@ class PollEngine: public Engine
     public:
         explicit PollEngine(int port): Engine(port) {}
         virtual void run() override;
-        virtual void addToEventLoop(Client *c, event_t events) override {};
-        virtual void changeEvents(Client *c, event_t events) override {};
+        virtual void addToEventLoop(Client *c, engine::event_t events) override {};
+        virtual void changeEvents(Client *c, engine::event_t events) override {};
 
     private:
         void acceptNewConnections();

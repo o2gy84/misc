@@ -2,6 +2,8 @@
 #include <sstream>
 #include <vector>
 
+#include <unistd.h>
+
 #include "utils.hpp"
 #include "http.hpp"
 
@@ -74,6 +76,22 @@ void HttpHeaders::fromString(const std::string &str)
 
         _headers[key] = utils::trimmed(key_value[1]);
     }
+
+    _content_len = 0;
+
+    std::string content_len = header("Content-Length");
+    if (content_len.empty())
+    {
+        return;
+    }
+    
+    size_t c_len = std::stoi(content_len);
+    if (c_len == 0)
+    {
+        return;
+    }
+
+    _content_len = c_len;
 }
 
 void HttpHeaders::clear()
@@ -94,13 +112,6 @@ HttpRequest::HttpRequest()
 }
 
 
-//HttpRequest::HttpRequest(const std::string &str)
-//{
-    //_request_valid = false;
-    //_headers_ready = false;
-    //append(str);
-//}
-
 std::string HttpRequest::toString() const
 {
     std::stringstream ss;
@@ -109,9 +120,9 @@ std::string HttpRequest::toString() const
 }
 
 
-void HttpRequest::dump() const
+void HttpRequest::dump(const std::string &prefix) const
 {
-    std::cerr << "<<<DUMP START>>>\n";
+    std::cerr << prefix << " <<<DUMP START>>>\n";
     std::string hdr = _headers.toString();
     std::cerr << hdr;
 
@@ -129,8 +140,8 @@ void HttpRequest::clear()
 {
     _headers.clear();
 
-    _content = "";
     _body = "";
+    _headers_string = "";
 
     _headers_ready = false;
     _request_valid = false;
@@ -139,14 +150,113 @@ void HttpRequest::clear()
 
 }
 
+void HttpRequest::processChunked(const std::string &str, std::string::size_type start_block)
+{
+    // <chunk-size-in-hex><CRLF><content><CRLF>
+    // 0<CRLF><CRLF>
+
+    std::string::size_type begin_content = 0;
+    std::string::size_type end_content = _chunk_size;
+
+    if (_chunk_size == 0)
+    {
+        std::string::size_type start_chunk = str.find("\r\n", start_block);
+        if (start_chunk == std::string::npos)
+        {
+            throw std::runtime_error("bad chunked format (broken hex length)");
+        }
+
+        std::string chunk_sz = str.substr(start_block, start_chunk - start_block);
+        _chunk_size = std::stoi(chunk_sz, nullptr, 16);
+        std::cerr << "FIRST CHUNK SIZE string: " << chunk_sz << ", dec: " << _chunk_size << "\n";
+
+        begin_content = start_chunk + 2;    // + "\r\n"
+        end_content = begin_content + _chunk_size;
+    }
+
+    size_t total_left_len = str.size() - begin_content;
+
+    std::cerr << "total_left: " << total_left_len << ", _chunk: " << _chunk_size << "\n";
+
+    if (_chunk_size >= total_left_len)
+    {
+        _body.append(str.begin() + begin_content, str.end());
+
+        // need read more
+        _chunk_size -= (str.size() - begin_content);
+        return;
+    }
+
+    while (true)
+    {
+        std::string t1(str.begin() + begin_content, str.begin() + begin_content + 5);
+        std::cerr << "t1: " << t1 << "\n";
+
+        _body.append(str.begin() + begin_content, str.begin() + end_content);
+
+        std::string test(str.begin() + end_content, str.begin() + end_content + 2);
+        if (test != "\r\n")
+        {
+            // TODO: !!!
+            std::cerr << "bad chunked format (broken crlf). test: " << test << "\n";
+            sleep(2);
+            _chunk_size -= (end_content - begin_content);
+            return;
+        }
+
+        // start_next_block помещаем перед длиной
+        size_t start_next_block = end_content + 2;
+
+        // start_new_chunk помещаем сразу после длины
+        size_t start_new_chunk = str.find("\r\n", start_next_block);
+
+        if (start_new_chunk == std::string::npos)
+        {
+            // wait for new chunk_size in next packet
+            _chunk_size = 0;
+            return;
+        }
+
+        std::string chunk_sz = str.substr(start_next_block, start_new_chunk - start_next_block);
+        _chunk_size = std::stoi(chunk_sz, nullptr, 16);
+        std::cerr << "SECOND CHUNK SIZE string: " << chunk_sz << ", dec: " << _chunk_size << "\n";
+
+        if (_chunk_size == 0)
+        {
+            _request_valid = true;
+            return;
+        }
+
+        start_new_chunk += 2;   // +\r\n
+        total_left_len = str.size() - start_new_chunk;
+
+        if (_chunk_size < total_left_len)
+        {
+            begin_content = start_new_chunk;
+            end_content = start_new_chunk + _chunk_size;
+            continue;
+        }
+
+        _body.append(str.begin() + start_new_chunk, str.end());
+
+        // need read more
+        _chunk_size -= total_left_len;
+        break;
+    }
+}
+
+
 void HttpRequest::append(const std::string &str)
 {
-    _content.append(str);
-
     if (_headers_ready)
     {
-        _body.append(str);
+        if (_chunked)
+        {
+            processChunked(str, 0);
+            return;
+        }
 
+        _body.append(str);
         if (_body.size() == _headers._content_len)
         {
             _request_valid = true;
@@ -156,17 +266,19 @@ void HttpRequest::append(const std::string &str)
         // need more bytes
         return;
     }
+    else
+    {
+        _headers_string.append(str);
+    }
 
-    size_t pos = _content.find("\r\n\r\n");
-
+    size_t pos = _headers_string.find("\r\n\r\n");
     if (pos == std::string::npos)
     {
         // need more bytes
-        _content.append(str);
         return;
     }
 
-    std::string headers = _content.substr(0, pos);
+    std::string headers = _headers_string.substr(0, pos);
     _headers.fromString(headers);
     _headers_ready = true;
 
@@ -174,35 +286,16 @@ void HttpRequest::append(const std::string &str)
     if (transfer_enc == "chunked")
     {
         _chunked = true;
-        size_t start_block = pos + 4;
-        size_t start_chunk = _content.find("\r\n", start_block);
-        std::string chunk_sz = _content.substr(start_block, start_chunk - start_block);
-
-        _chunk_size = std::stoi(chunk_sz, nullptr, 16);
-        _body.append(str.begin() + start_chunk + 2, str.end());
+        processChunked(str, pos + 4);
         return;
     }
 
-
-    std::string content_len = _headers.header("Content-Length");
-    _headers._content_len = 0;
-
-    if (content_len.empty())
-    {
-        _request_valid = true;
-        return;
-    }
-    
-    size_t c_len = std::stoi(content_len);
-    if (c_len == 0)
+    if (_headers._content_len == 0)
     {
         _request_valid = true;
         return;
     }
 
-    _headers._content_len = c_len;
-
-    // need c_len bytes
     _body.append(str.begin() + pos + /*\r\n\r\n*/4, str.end());
 
     if (_body.size() == _headers._content_len)
