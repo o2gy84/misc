@@ -33,12 +33,12 @@ struct HttpRequest
 {
     HttpRequest();
     void append(const std::string &str);
-
     bool valid() const { return _request_valid; }
+    void dump(const std::string &prefix, const std::string &direction) const;
+    void clear();
 
     std::string toString() const;
-    void dump(const std::string &prefix) const;
-    void clear();
+    std::string asIs() const { return _headers_string + _body; };
 
     HttpHeaders _headers;
     std::string _body;

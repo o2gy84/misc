@@ -63,6 +63,19 @@ void EpollEngine::changeEvents(Client *c, engine::event_t events)
     struct epoll_event ev;
     ev.data.ptr = c;
 
+    if (events == engine::event_t::EV_NONE)
+    {
+        if (0 != epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, c->_sd, &ev))
+        {
+            std::cerr << "error add to epoll!\n";
+        }
+        else
+        {
+            std::cerr << "del client from epoll: " << c->_sd << ", ptr: " << (void*)c << "\n";
+        }
+        return;
+    }
+
     if (events == engine::event_t::EV_READ)
     {
         ev.events = EPOLLIN;
@@ -210,6 +223,7 @@ void EpollEngine::eventLoop()
             std::cerr << "GC start. disconnect: " << disconnected_clients.size() << " clients" << std::endl;
             for (size_t i = 0; i < disconnected_clients.size(); ++i)
             {
+                // auto delete from epoll
                 int sd = disconnected_clients[i]->_sd;
                 std::cerr << "close: " << sd << ", delete: " << (void*)disconnected_clients[i] << std::endl;
                 close(sd);

@@ -15,6 +15,7 @@ namespace engine
     // Абстрактные event'ы, за которыми должен уметь следить Engine
     enum class event_t: uint8_t
     {
+        EV_NONE,
         EV_READ,
         EV_WRITE
     };

@@ -120,17 +120,30 @@ std::string HttpRequest::toString() const
 }
 
 
-void HttpRequest::dump(const std::string &prefix) const
+void HttpRequest::dump(const std::string &prefix, const std::string &direction) const
 {
     std::cerr << prefix << " <<<DUMP START>>>\n";
-    std::string hdr = _headers.toString();
-    std::cerr << hdr;
 
-    if (hdr.back() != '\n')
+    std::cerr <<  direction << _headers._method << " " << _headers._resource << " " << _headers._version;
+
+    if (_headers._headers.size())
     {
-        std::cerr << "\n";
+        std::cerr << "\r\n";
     }
 
+    size_t counter = 0;
+    for (auto h = _headers._headers.begin(); h != _headers._headers.end(); ++h)
+    {
+        std::cerr << direction << h->first << ": " << h->second;
+        ++counter;
+        if (counter < _headers._headers.size())
+        {
+            std::cerr << "\r\n";
+        }
+    }
+    std::cerr << "\r\n";
+
+    std::string hdr = _headers.toString();
     std::cerr << "headers: " << hdr.size() << " bytes, body: " << _body.size() 
               << " bytes, total: " << hdr.size() + _body.size() << " bytes (without \\r\\n\\r\\n)\n";
     std::cerr << "<<<DUMP END>>>\n";
@@ -200,8 +213,9 @@ void HttpRequest::processChunked(const std::string &str, std::string::size_type 
             // TODO: !!!
             std::cerr << "bad chunked format (broken crlf). test: " << test << "\n";
             sleep(2);
-            _chunk_size -= (end_content - begin_content);
-            return;
+            throw std::runtime_error("bad chunked format (broken crlf)");
+            //_chunk_size -= (end_content - begin_content);
+            //return;
         }
 
         // start_next_block помещаем перед длиной
