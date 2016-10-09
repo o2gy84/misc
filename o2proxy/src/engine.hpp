@@ -1,6 +1,7 @@
 #ifndef _ENGINE_HPP
 #define _ENGINE_HPP
 
+#include <vector>
 #include <functional>
 #include "client.hpp"
 
@@ -38,6 +39,8 @@ public:
     virtual void addToEventLoop(Client *c, engine::event_t events) =0;
     virtual void changeEvents(Client *c, engine::event_t events) =0;
 
+    bool isMyHost(const std::string &host) const;
+
 protected:
     int listener() const { return m_Listener; }
 
@@ -46,6 +49,8 @@ private:
 
 private:
     int m_Listener;
+
+    std::vector<uint32_t> m_LocalIPs;
 };
 
 
