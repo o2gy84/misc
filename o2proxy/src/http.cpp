@@ -320,3 +320,12 @@ void HttpRequest::append(const std::string &str)
 
     // need more bytes
 }
+
+void HttpRequest::appendAsIs(const std::string &str)
+{
+    _headers_string.clear();
+    _body.append(str.begin(), str.end());
+}
+
+
+

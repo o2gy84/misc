@@ -63,6 +63,7 @@ void EpollEngine::changeEvents(Client *c, engine::event_t events)
     struct epoll_event ev;
     ev.data.ptr = c;
 
+    if (0)
     if (events == engine::event_t::EV_NONE)
     {
         if (0 != epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, c->_sd, &ev))
@@ -86,12 +87,18 @@ void EpollEngine::changeEvents(Client *c, engine::event_t events)
         ev.events = EPOLLOUT;
         c->_state = client_state_t::WANT_WRITE;
     }
+    else if (events == engine::event_t::EV_NONE)
+    {
+        std::cerr << "no waiting for events: " << c->_sd << ", ptr: " << (void*)c << "\n";
+        ev.events = 0;
+    }
+
 
     bool ret = (epoll_ctl(_epoll_fd, EPOLL_CTL_MOD, c->_sd, &ev) == 0);
 
     if (!ret)
     {
-        std::cerr << "epol_ctl error!\n";
+        std::cerr << "[" << c->_sd <<  "] epol_ctl error!\n";
     }
 
     return;
@@ -174,22 +181,25 @@ void EpollEngine::eventLoop()
                     continue;
 
                 char buf[65536];
+                memset(buf, 0, sizeof(buf));
+
+
                 int r = read(c->_sd, buf, sizeof(buf));
                 buf[r] = '\0';
 
-                if (r < 0)
+                //std::cerr << "event loop readed: " << r << " bytes\n";
+
+                if (r < 0 && errno != EAGAIN)
                 {
                     std::cerr << "read error! " << strerror(errno) << std::endl;
                     disconnected_clients.push_back(c);
-                    continue;
                 }
                 else if (r == 0)
                 {
                     std::cerr << "client disconnected: " << c->_sd << "\n";
                     disconnected_clients.push_back(c);
                 }
-
-                if (r > 0)
+                else if (r > 0)
                 {
                     c->onRead(std::string(buf, buf + r));
                 }
@@ -203,9 +213,6 @@ void EpollEngine::eventLoop()
                 }
 
                 c->onWrite();
-
-                //bool ret = set_desire_events(_epoll_fd, cs->_sd, EPOLLIN, cs);
-                //if (!ret) throw std::runtime_error(std::string("epoll_ctl error: ") + strerror(errno));
             }
             else
             {
@@ -227,6 +234,8 @@ void EpollEngine::eventLoop()
                 int sd = disconnected_clients[i]->_sd;
                 std::cerr << "close: " << sd << ", delete: " << (void*)disconnected_clients[i] << std::endl;
                 close(sd);
+
+                disconnected_clients[i]->onDead();
                 delete disconnected_clients[i];
             }
         }
@@ -235,6 +244,5 @@ void EpollEngine::eventLoop()
 
 void EpollEngine::run()
 {
-    std::cerr << "epoll server starts" << std::endl;
     eventLoop();
 }

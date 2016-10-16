@@ -22,6 +22,7 @@ struct Client
 
         virtual void onRead(const std::string &str) {}
         virtual void onWrite()                      {}
+        virtual void onDead()                       {}
 
         int _sd;
         client_state_t _state;

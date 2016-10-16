@@ -86,89 +86,74 @@ namespace
 
 std::string state2string(ProxyClient::state state)
 {
-    if (state == ProxyClient::state::WAIT_BOTH_TARGET_OR_CLIENT)        return "wait_both_target_or_client";
-    if (state == ProxyClient::state::WANT_READ_FROM_CLI)                return "read_from_cli";
+    if (state == ProxyClient::state::UNKNOWN_STATE)                     return "unknown_state";
+    if (state == ProxyClient::state::INIT_STATE)                        return "init_state";
+    if (state == ProxyClient::state::WANT_WRITE_TO_TARGET)              return "want_write_to_target";
+    if (state == ProxyClient::state::WANT_READ_FROM_TARGET)             return "want_read_from_target";
+    if (state == ProxyClient::state::WANT_CONNECT)                      return "want_connect";
     if (state == ProxyClient::state::WANT_WRITE_TO_CLI)                 return "write_to_cli";
-    if (state == ProxyClient::state::WANT_READ_FROM_CLI_BINARY)         return "read_from_cli_binary";
-    if (state == ProxyClient::state::WANT_WRITE_TO_CLI_BINARY)          return "write_to_cli_binary";
-    if (state == ProxyClient::state::WANT_WRITE_TO_CLI_AFTER_CONNECT)   return "write_to_cli_after_connect";
-    if (state == ProxyClient::state::WANT_READ_FROM_CLI_AFTER_CONNECT)  return "read_from_cli_after_connect";
-    if (state == ProxyClient::state::WAIT_FOR_CONNECT)                  return "wait_for_connect";
-    if (state == ProxyClient::state::WAIT_FOR_TARGET)                   return "wait_for_target";
+    if (state == ProxyClient::state::WANT_READ_FROM_CLI)                return "read_from_cli";
     throw std::runtime_error("ProxyClient: unknown state");
 }
 
+void AbstractStream::dump(const std::string &prefix, const std::string &direction)
+{
+    std::string::size_type pos = buf.find("\r\n");
+    if (pos == std::string::npos)
+    {
+        size_t max = std::min((size_t)buf.size(), (size_t)10);
+        std::string tmp = buf.substr(0, max);
 
-void ProxyClient::setState(ProxyClient::state state)
+        if (max == 0)
+        {
+            std::cerr << direction << prefix << " stream empty\n";
+        }
+        else
+        {
+            std::cerr << direction << prefix << " " << tmp << "\n";
+        }
+        return;
+    }
+    
+    size_t max = std::min((size_t)pos, (size_t)100);
+    std::string tmp = buf.substr(0, max);
+    std::cerr << direction << prefix << " " << tmp << "\n";
+}
+
+
+void bind(ProxyClient *to_browser, ProxyClient *to_target)
+{
+    to_browser->_partner = to_target;
+    to_target->_partner = to_browser;
+}
+
+ProxyClient::ProxyClient(int sd, Engine *ev): Client(sd), _ev(ev)
+{
+    _state = state::INIT_STATE;
+    _partner = NULL;
+}
+
+ProxyClient::~ProxyClient()
+{
+    std::cerr << "~DESTROY: " << _sd << "\n";
+}
+
+
+void ProxyClient::nextState(ProxyClient::state new_state)
 { 
-    std::cerr << "[" << _sd << "] " <<"SET STATE: \"" << state2string(_state) << "\" --> \"" << state2string(state) << "\"\n";
+    //std::cerr << "[" << _sd << "] " <<"STATE: \"" << state2string(_state) << "\" --> \"" << state2string(new_state) << "\"\n";
 
-    // TODO: clean this table
-
-    if (_state == ProxyClient::state::WAIT_FOR_CONNECT)
-    {
-        if (state == ProxyClient::state::WANT_WRITE_TO_CLI)
-        {
-            _state = ProxyClient::state::WANT_WRITE_TO_CLI_AFTER_CONNECT;
-            return;
-        }
-    }
-    else if (_state == ProxyClient::state::WAIT_FOR_TARGET)
-    {
-        if (state == ProxyClient::state::WANT_WRITE_TO_CLI)
-        {
-            _state = ProxyClient::state::WANT_WRITE_TO_CLI;
-            return;
-        }
-        else if (state == ProxyClient::state::WANT_WRITE_TO_CLI_BINARY)
-        {
-            _state = ProxyClient::state::WANT_WRITE_TO_CLI_BINARY;
-            return;
-        }
-        else if (state == ProxyClient::state::WAIT_BOTH_TARGET_OR_CLIENT)
-        {
-            _state = ProxyClient::state::WANT_WRITE_TO_CLI_BINARY;
-            return;
-        }
-    }
-    else if (_state == ProxyClient::state::WAIT_BOTH_TARGET_OR_CLIENT)
-    {
-        if (state == ProxyClient::state::WANT_WRITE_TO_CLI_BINARY)
-        {
-            _state = ProxyClient::state::WANT_WRITE_TO_CLI_BINARY;
-            return;
-        }
-        if (state == ProxyClient::state::WAIT_BOTH_TARGET_OR_CLIENT)
-        {
-            _state = ProxyClient::state::WANT_WRITE_TO_CLI_BINARY;
-            return;
-        }
-    }
-    else if (_state == ProxyClient::state::WANT_WRITE_TO_CLI_BINARY)
-    {
-        if (state == ProxyClient::state::WANT_WRITE_TO_CLI_BINARY)
-        {
-            _state = ProxyClient::state::WANT_WRITE_TO_CLI_BINARY;
-            return;
-        }
-        if (state == ProxyClient::state::WAIT_BOTH_TARGET_OR_CLIENT)
-        {
-            _state = ProxyClient::state::WANT_WRITE_TO_CLI_BINARY;
-            return;
-        }
-    }
-
-    throw std::runtime_error("state machine error");
+    _state = new_state;
 }
 
 void ProxyClient::onRead(const std::string &str)
 {
-    std::cerr << "ProxyClient on read: " << str.size() << " bytes [sd: " << _sd << ", state: " << state2string(_state) << "]\n";
+    std::cerr << "[" << _sd << "] onRead: " << str.size() << " bytes [state: " << state2string(_state) << "]\n";
 
-    _req.append(str);
-
-    if (_state == state::WANT_READ_FROM_CLI)
+    if (_state == state::INIT_STATE)
     {
+        _req.append(str);
+
         if (!_req.valid())
         {
             // need read more
@@ -194,22 +179,28 @@ void ProxyClient::onRead(const std::string &str)
 
         if (_ev->isMyHost(host))
         {
-            _resp.append("HTTP/1.1 200 OK\r\nContent-Length: 7\r\n\r\no2proxy");
-            _state = ProxyClient::state::WANT_WRITE_TO_CLI;
+             _partner = new ProxyClient(-1, _ev);
+             bind(this, _partner);
+ 
+            _partner->_stream.append("HTTP/1.1 200 OK\r\nContent-Length: 7\r\n\r\no2proxy");
+            nextState(ProxyClient::state::WANT_WRITE_TO_CLI);
             _ev->changeEvents(this, engine::event_t::EV_WRITE);
+            _req.clear();
             return;
         }
 
         if (_req._headers._method == "CONNECT")
         {
-            _state = state::WAIT_FOR_CONNECT;
+            int proxy_sd = non_blocked_connect(host, std::stoi(port));
+            set_non_blocked(proxy_sd, false);
 
-            int nbsd = non_blocked_connect(host, std::stoi(port));
-            set_non_blocked(nbsd, false);
+            _partner = new ProxyClient(proxy_sd, _ev);
+             bind(this, _partner);
 
-            m_proxy = new ProxyClientToRemoteServer(nbsd, _ev, this, _req, ProxyClientToRemoteServer::state::WANT_CONNECT);
-            _ev->addToEventLoop(m_proxy, engine::event_t::EV_WRITE);
+            _ev->addToEventLoop(_partner, engine::event_t::EV_WRITE);
             _req.clear();
+
+            _partner->nextState(ProxyClient::state::WANT_CONNECT);
             return;
         }
 
@@ -217,56 +208,66 @@ void ProxyClient::onRead(const std::string &str)
             || _req._headers._method == "POST"
             )
         {
-            _state = state::WAIT_FOR_TARGET;
-
-            int nbsd = non_blocked_connect(host, std::stoi(port));
+            int proxy_sd = non_blocked_connect(host, std::stoi(port));
 
             // nonblocked socket never blocks, so epoll always returns immediately
-            set_non_blocked(nbsd, false);
-            
-            Client *c = new ProxyClientToRemoteServer(nbsd, _ev, this, _req, ProxyClientToRemoteServer::state::WANT_WRITE_FROM_CLI_TO_TARGET);
-            _ev->addToEventLoop(c, engine::event_t::EV_WRITE);
+            set_non_blocked(proxy_sd, false);
+
+             _partner = new ProxyClient(proxy_sd, _ev);
+             bind(this, _partner);
+           
+            _ev->addToEventLoop(_partner, engine::event_t::EV_WRITE);
+            _partner->nextState(ProxyClient::state::WANT_WRITE_TO_TARGET);
+
+            _stream.clear();
+            _stream.append(_req.asIs());
             _req.clear();
+
             return;
         }
             
         throw std::runtime_error("UNKNOWN HTTP REQUEST!");
     }
 
-    if (_state == state::WANT_READ_FROM_CLI_AFTER_CONNECT)
+    _req.clear();
+
+
+    if (_state == state::WANT_READ_FROM_TARGET)
     {
-        _state = state::WAIT_FOR_TARGET;
+        _stream.clear();
 
-        m_proxy->setRequest(_req);
-        m_proxy->setState(ProxyClientToRemoteServer::state::WANT_WRITE_FROM_CLI_TO_TARGET_BINARY);
-        _req.clear();
+        _stream.append(str);
+        //_stream.dump("ReadFromTarget: ", "<<< ");
 
-        _ev->addToEventLoop(m_proxy, engine::event_t::EV_WRITE);
+        if (_partner == NULL)
+        {
+            std::cerr << "PARTNER1 IS NULL !\n";
+            return;
+        }
+
+        _ev->changeEvents(_partner, engine::event_t::EV_WRITE);
+        _partner->nextState(ProxyClient::state::WANT_WRITE_TO_CLI);
+        return;
+    }
+    
+    if (_state == state::WANT_READ_FROM_CLI)
+    {
+        _stream.clear();
+
+        _stream.append(str);
+        //_stream.dump("ReadFromCli: ", "<<< ");
+
+        if (_partner == NULL)
+        {
+            std::cerr << "PARTNER2 IS NULL !\n";
+            return;
+        }
+
+        _ev->changeEvents(_partner, engine::event_t::EV_WRITE);
+        _partner->nextState(ProxyClient::state::WANT_WRITE_TO_TARGET);
         return;
     }
 
-    if (_state == state::WAIT_FOR_TARGET)
-    {
-        std::cerr << "TEST\n";
-        sleep(1);
-
-        // client sends requset in many buckets
-        m_proxy->addRequest(_req);
-        //m_proxy->setState(ProxyClientToRemoteServer::state::WANT_WRITE_FROM_CLI_TO_TARGET_BINARY);
-        _req.clear();
-        return;
-    }
-
-    if (_state == state::WAIT_BOTH_TARGET_OR_CLIENT)
-    {
-        // if this state onRead, we need to do request on target
-        m_proxy->setRequest(_req);
-        m_proxy->setState(ProxyClientToRemoteServer::state::WANT_WRITE_FROM_CLI_TO_TARGET_BINARY);
-        _req.clear();
-
-        _ev->changeEvents(m_proxy, engine::event_t::EV_WRITE);
-        return;
-    }
 
     throw std::runtime_error("onRead: unknown state");
 }
@@ -274,155 +275,35 @@ void ProxyClient::onRead(const std::string &str)
 
 void ProxyClient::onWrite()
 {
-    std::cerr << "ProxyClient onWrite [sd: " << _sd << ", state: " << state2string(_state) << "]\n";
+    std::cerr << "[" << _sd << "] ProxyClient onWrite [state: " << state2string(_state) << "]\n";
 
-    if (_state == state::WANT_WRITE_TO_CLI || _state == state::WANT_WRITE_TO_CLI_AFTER_CONNECT)
+    Client *cs = static_cast<Client*>(_partner);
+    std::cerr << "partner: " << (void*)_partner << "\n";
+    if (cs == NULL)
     {
-        _resp.dump("ProxyToBrowser: onWrite req", ">>> ");
-        int rc = send(_sd, _resp.toString());
+        std::cerr << "\t\t\tPARTNER IS NULL ON WRITE!\n";
+        _ev->changeEvents(this, engine::event_t::EV_NONE);
+        return;
+    }
+
+
+    if (_state == state::WANT_WRITE_TO_TARGET)
+    {
+        _partner->_stream.dump("ProxyToRemoteServer: onWrite req", ">>> ");
+        int rc = send(_sd, _partner->_stream.stream());
+
         if (rc <= 0)
         {
             std::cerr << "send error :(\n";
         }
         else
         {
-            std::cerr << "send rc: " << rc << " bytes\n";
+            std::cerr << "[" << _sd << "] proxy send: " << rc << " bytes\n";
         }
 
-        if (_state == state::WANT_WRITE_TO_CLI)
-        {
-            _state = state::WANT_READ_FROM_CLI;
-        }
-        else if (_state == state::WANT_WRITE_TO_CLI_AFTER_CONNECT)
-        {
-            _state = state::WANT_READ_FROM_CLI_AFTER_CONNECT;
-        }
+        _partner->_stream.clear();
 
-        _ev->changeEvents(this, engine::event_t::EV_READ);
-        return;
-    }
-
-
-    if (_state == state::WANT_WRITE_TO_CLI_BINARY)
-    {
-        int rc = send(_sd, _resp.asIs());
-        if (rc <= 0)
-        {
-            std::cerr << "send error :(\n";
-        }
-        else
-        {
-            std::cerr << "send rc: " << rc << " bytes\n";
-        }
-
-        // can read_from_cli_binary or wait_for_target
-        _state = state::WAIT_BOTH_TARGET_OR_CLIENT;
-
-        _ev->changeEvents(this, engine::event_t::EV_READ);
-        _ev->changeEvents(m_proxy, engine::event_t::EV_READ);
-
-        return;
-    }
-
-    throw std::runtime_error("onWrite: unknown state");
-}
-
-
-std::string state2string(ProxyClientToRemoteServer::state state)
-{
-    if (state == ProxyClientToRemoteServer::state::WANT_WRITE_FROM_CLI_TO_TARGET)           return "write_to_target";
-    if (state == ProxyClientToRemoteServer::state::WANT_WRITE_FROM_CLI_TO_TARGET_BINARY)    return "write_to_target_binary";
-    if (state == ProxyClientToRemoteServer::state::WANT_READ_FROM_TARGET)                   return "read_from_target";
-    if (state == ProxyClientToRemoteServer::state::WANT_CONNECT)                            return "connect_to_target";
-    if (state == ProxyClientToRemoteServer::state::WANT_READ_FROM_TARGET_BINARY)            return "read_from_target_binary";
-    //if (state == ProxyClientToRemoteServer::state::)
-    //if (state == ProxyClientToRemoteServer::state::)
-    throw std::runtime_error("ProxyClientToRemoteServer: unknown state");
-}
-
-void ProxyClientToRemoteServer::onRead(const std::string &str)
-{
-    std::cerr << "ProxyToRemoteServer onRead: " << str.size() << " bytes [sd: " << _sd << ", state: " << state2string(_state) << "]\n";
-
-    if (_state == state::WANT_READ_FROM_TARGET)
-    {
-        //std::cerr << str << "\n";
-
-        _resp.append(str);
-
-        if (_resp.valid())
-        {
-            if (_resp._chunked)
-            {
-                _resp._headers._headers["Content-Length"] = std::to_string(_resp._body.size());
-                _resp._headers._headers.erase("Transfer-Encoding");
-            }
-
-            m_cli->setResponse(_resp);
-            m_cli->setState(ProxyClient::state::WANT_WRITE_TO_CLI);
-            _ev->changeEvents(m_cli, engine::event_t::EV_WRITE);
-            _resp.clear();
-            return;
-        }
-        else
-        {
-            // need read more
-            _ev->changeEvents(this, engine::event_t::EV_READ);
-            return;
-        }
-        return;
-    }
-
-    if (_state == state::WANT_READ_FROM_TARGET_BINARY)
-    {
-        _resp.append(str);
-
-        m_cli->setResponse(_resp);
-        m_cli->setState(ProxyClient::state::WAIT_BOTH_TARGET_OR_CLIENT);
-        _ev->changeEvents(m_cli, engine::event_t::EV_WRITE);
-        //_ev->changeEvents(this, engine::event_t::EV_NONE);
-        _resp.clear();
-        return;
-    }
-
-    throw std::runtime_error("onRead: unknown state");
-}
-
-void ProxyClientToRemoteServer::onWrite()
-{
-    std::cerr << "ProxyToRemoteServer onWrite: " << _sd << ", state: " << state2string(_state) << "\n";
-
-    if (_state == state::WANT_WRITE_FROM_CLI_TO_TARGET)
-    {
-        _req.dump("ProxyClientToRemoteServer: onWrite req", ">>> ");
-        int rc = send(_sd, _req.toString());
-        if (rc <= 0)
-        {
-            std::cerr << "send error :(\n";
-        }
-        else
-        {
-            std::cerr << "proxy send: " << rc << " bytes\n";
-        }
-
-        _state = state::WANT_READ_FROM_TARGET;
-        _ev->changeEvents(this, engine::event_t::EV_READ);
-        return;
-    }
-
-    if (_state == state::WANT_WRITE_FROM_CLI_TO_TARGET_BINARY)
-    {
-        int rc = send(_sd, _req.asIs());
-        if (rc <= 0)
-        {
-            std::cerr << "send error :(\n";
-        }
-        else
-        {
-            std::cerr << "proxy send: " << rc << " bytes\n";
-        }
-
-        _state = state::WANT_READ_FROM_TARGET_BINARY;
+        nextState(state::WANT_READ_FROM_TARGET);
         _ev->changeEvents(this, engine::event_t::EV_READ);
         return;
     }
@@ -430,18 +311,34 @@ void ProxyClientToRemoteServer::onWrite()
 
     if (_state == state::WANT_CONNECT)
     {
-        _resp.append("HTTP/1.1 200 OK\r\n\r\n");
-        m_cli->setResponse(_resp);
-        _resp.clear();
-        m_cli->setState(ProxyClient::state::WANT_WRITE_TO_CLI);
-        _ev->changeEvents(m_cli, engine::event_t::EV_WRITE);
+        _stream.append("HTTP/1.1 200 OK\r\n\r\n");
+        _ev->changeEvents(_partner, engine::event_t::EV_WRITE);
         _ev->changeEvents(this, engine::event_t::EV_NONE);
+        _partner->nextState(ProxyClient::state::WANT_WRITE_TO_CLI);
+        return;
+    }
+
+    if (_state == state::WANT_WRITE_TO_CLI)
+    {
+        _partner->_stream.dump("ProxyToBrowser: onWrite", ">>> ");
+        int rc = send(_sd, _partner->_stream.stream());
+
+        if (rc <= 0)
+        {
+            std::cerr << "send error :(\n";
+        }
+        else
+        {
+            std::cerr << "[" << _sd << "] send rc: " << rc << " bytes\n";
+        }
+
+        _partner->_stream.clear();
+
+        nextState(ProxyClient::state::WANT_READ_FROM_CLI);
+        _ev->changeEvents(this, engine::event_t::EV_READ);
         return;
     }
 
     throw std::runtime_error("onWrite: unknown state");
 }
-
-
-
 

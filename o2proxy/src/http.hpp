@@ -33,6 +33,8 @@ struct HttpRequest
 {
     HttpRequest();
     void append(const std::string &str);
+    void appendAsIs(const std::string &str);
+
     bool valid() const { return _request_valid; }
     void dump(const std::string &prefix, const std::string &direction) const;
     void clear();

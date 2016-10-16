@@ -3,6 +3,8 @@
 
 #include <vector>
 #include <functional>
+#include <memory>
+
 #include "client.hpp"
 
 namespace engine
@@ -26,8 +28,8 @@ namespace engine
         size_t transferred;
         op_error_t error;
     };
-
 }
+
 
 class Engine
 {

@@ -33,7 +33,9 @@ Engine::Engine(int port)
         rimap_local_ip_ptr[1] = ipf[1];
         rimap_local_ip_ptr[2] = ipf[2];
         rimap_local_ip_ptr[3] = ipf[3];
+
         std::cerr << "localhost resolved: " << utils::int2ipv4(cur_interface_ip) << ", uint: " << cur_interface_ip << std::endl;
+
         ++pAddr;
         m_LocalIPs.push_back(cur_interface_ip);
     }
@@ -100,6 +102,8 @@ int Engine::listenSocket(uint32_t port, uint32_t listen_queue_size)
     }
 
     listen(sd, listen_queue_size);
+
+    std::cerr << "listen to: " << port << std::endl;
     return sd;
 }
 

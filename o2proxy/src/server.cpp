@@ -4,6 +4,8 @@
 #include "epoll.hpp"
 #include "select.hpp"
 
+#include <iostream>
+
 namespace 
 {
     std::unique_ptr<Engine> get_engine(engine_t type, int port)
@@ -28,6 +30,8 @@ namespace
             }
             case engine_t::UNKNOWN: throw std::logic_error("unknown engine type");
         }
+
+        std::cerr << "use engine: " << "epoll" << "\n";
 
         return ret;
     }
