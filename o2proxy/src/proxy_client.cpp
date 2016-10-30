@@ -400,3 +400,18 @@ void ProxyClient::onWrite()
     throw std::runtime_error("onWrite: unknown state");
 }
 
+void ProxyClient::onDead()
+{
+    if (_partner != NULL)
+    {
+        std::cerr << "~delete partner: " << _partner->sd() << "\n";
+        delete _partner;
+
+        //::close(_partner->sd());
+        //if (_partner->_partner != NULL)
+        //{
+            //_partner->_partner = NULL;
+        //}
+    }
+}
+

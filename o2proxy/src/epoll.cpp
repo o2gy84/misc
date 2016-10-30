@@ -237,6 +237,7 @@ void EpollEngine::eventLoop()
 
                 disconnected_clients[i]->onDead();
                 delete disconnected_clients[i];
+                disconnected_clients[i] = NULL;
             }
         }
     }

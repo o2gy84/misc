@@ -53,16 +53,7 @@ public:
     // callbacks
     virtual void onRead(const std::string &str) override;
     virtual void onWrite() override;
-    virtual void onDead() override
-    {
-        if (_partner != NULL)
-        {
-            if (_partner->_partner != NULL)
-            {
-                _partner->_partner = NULL;
-            }
-        }
-    }
+    virtual void onDead() override;
 
 public:
     // TODO: abstract protocol

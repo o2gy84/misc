@@ -2,6 +2,7 @@
 #define _CLIENT_HPP
 
 #include <inttypes.h>   // uint8_t
+#include <unistd.h>
 #include <string>
 
 enum class client_state_t: uint8_t
@@ -18,7 +19,7 @@ struct Client
 {
         explicit Client(int sd)              : _sd(sd), _state(client_state_t::WANT_READ) {}
         Client(int sd, client_state_t state) : _sd(sd), _state(state) {}
-        virtual ~Client() {}
+        virtual ~Client() { if (_sd > 0) ::close (_sd); }
 
         virtual void onRead(const std::string &str) {}
         virtual void onWrite()                      {}
