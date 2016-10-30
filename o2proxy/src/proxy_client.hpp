@@ -10,13 +10,13 @@ class AbstractStream
 {
 public:
     void dump(const std::string &prefix, const std::string &direction);
-    void append(const std::string &str)     { buf.append(str); }
+    void append(const std::string &str)     { _buf.append(str); }
 
-    void clear()                            { buf.clear(); }
-    std::string stream()                    { return buf; }
+    void clear()                            { _buf.clear(); }
+    std::string stream()                    { return _buf; }
 
 public:
-    std::string buf;
+    std::string _buf;
 };
 
 /*
@@ -46,6 +46,11 @@ public:
 
     void nextState(ProxyClient::state state);
 
+    // getters
+    ProxyClient::state getState() const { return _state; }
+    int sd() const { return _sd; }
+
+    // callbacks
     virtual void onRead(const std::string &str) override;
     virtual void onWrite() override;
     virtual void onDead() override

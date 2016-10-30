@@ -93,7 +93,16 @@ int Engine::listenSocket(uint32_t port, uint32_t listen_queue_size)
     memset(&serv_addr, 0, sizeof(serv_addr));
 
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    if (1)
+    {
+        serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    }
+    else
+    {
+        // TODO: !!!
+        struct hostent *hp = gethostbyname("192.168.70.129");
+        serv_addr.sin_addr.s_addr = *((unsigned long *)hp->h_addr);
+    }
     serv_addr.sin_port = htons(port);
 
     if (bind(sd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
