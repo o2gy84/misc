@@ -219,9 +219,19 @@ void ProxyClient::onRead(const std::string &str)
 
         _req.dump("ProxyClient: onRead req", "<<< ");
 
-        std::vector<std::string> host_port = utils::split(_req._headers.header("Host"), ":");
+
+        std::string destination = _req._headers.header("Host");
+        if (_req._headers._method == "CONNECT")
+        {
+            destination = _req._headers._resource;
+        }
+
+        std::vector<std::string> host_port = utils::split(destination, ":");
         std::string host;
         std::string port;
+
+        std::cerr << "SIZE: " << host_port.size() << "\n";
+
         if (host_port.size() != 2)
         {
             host = _req._headers.header("Host");
