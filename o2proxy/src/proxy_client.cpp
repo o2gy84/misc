@@ -81,14 +81,13 @@ namespace
         size_t left = str.size();
         ssize_t sent = 0;
         //int flags = MSG_DONTWAIT | MSG_NOSIGNAL;
-        int flags = 0;
+        int flags = MSG_NOSIGNAL;
 
         while (left > 0)
         {
             sent = ::send(sd, str.data() + sent, str.size() - sent, flags);
             if (-1 == sent)
             {
-                std::cerr << "write failed: " << strerror(errno) << "\n";
                 return -1;
             }
 
@@ -391,7 +390,8 @@ void ProxyClient::onWrite()
 
         if (rc <= 0)
         {
-            std::cerr << "send error :(\n";
+            std::cerr << "[" << _sd << "] proxy->target send error: " << rc << ", " << strerror(errno)
+                      << ", wasnt sent: " << _partner->_stream.stream().size() << " bytes\n";
         }
         else
         {
@@ -412,7 +412,8 @@ void ProxyClient::onWrite()
 
         if (rc <= 0)
         {
-            std::cerr << "send error :(\n";
+            std::cerr << "[" << _sd << "] proxy->browser error: " << rc << ", " << strerror(errno)
+                      << ", wasnt sent: " << _partner->_stream.stream().size() << " bytes\n";
         }
         else
         {

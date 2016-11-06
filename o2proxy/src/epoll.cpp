@@ -170,9 +170,10 @@ void EpollEngine::eventLoop()
             if (events[i].events & EPOLLHUP)
             {
                 // e.g. previous write() was in a already closed sd
-                std::cerr << "client hup\n";
-                Client *cs = static_cast<Client*>(events[i].data.ptr);
-                disconnected_clients.push_back(cs);
+                Client *c = static_cast<Client*>(events[i].data.ptr);
+                std::cerr << "[" << c->_sd << "] hup\n";
+
+                disconnected_clients.push_back(c);
             }
             else if (events[i].events & EPOLLIN)
             {
@@ -180,23 +181,28 @@ void EpollEngine::eventLoop()
                 if (c->_state != client_state_t::WANT_READ)
                     continue;
 
-                char buf[65536];
+                char buf[65536 * 2];
                 memset(buf, 0, sizeof(buf));
 
 
-                int r = read(c->_sd, buf, sizeof(buf));
+                int r = ::read(c->_sd, buf, sizeof(buf) - 1);
                 buf[r] = '\0';
 
                 //std::cerr << "event loop readed: " << r << " bytes\n";
 
                 if (r < 0 && errno != EAGAIN)
                 {
-                    std::cerr << "read error! " << strerror(errno) << std::endl;
+                    std::cerr << "[" << c->_sd << "] read error: " << strerror(errno) << std::endl;
+                    disconnected_clients.push_back(c);
+                }
+                if (r < 0 && errno == EAGAIN)
+                {
+                    std::cerr << "[" << c->_sd << "] STRANGE CASE: " << strerror(errno) << std::endl;
                     disconnected_clients.push_back(c);
                 }
                 else if (r == 0)
                 {
-                    std::cerr << "client disconnected: " << c->_sd << "\n";
+                    std::cerr << "[" << c->_sd << "] disconnected" << std::endl;
                     disconnected_clients.push_back(c);
                 }
                 else if (r > 0)
