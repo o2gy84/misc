@@ -55,7 +55,10 @@ bool Engine::isMyHost(const std::string &host) const
 {
     struct hostent* hp = gethostbyname(host.data());
     if (NULL == hp)
-        throw std::runtime_error("resolve error: " + std::string(strerror(errno)));
+    {
+        std::cerr << "Engine: [" << host << "] resolve error: " << std::string(strerror(errno)) << "\n";
+        return false;
+    }
 
     char** pAddr = hp->h_addr_list;
     while (*pAddr)

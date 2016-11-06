@@ -20,7 +20,7 @@ namespace
     {
         struct hostent* hp = gethostbyname(host);
         if (NULL == hp)
-            throw std::runtime_error("resolve error: " + std::string(strerror(errno)));
+            throw std::runtime_error("proxy [" + std::string(host) + "] resolve error: " + std::string(strerror(errno)));
 
         struct sockaddr_in addr;
         memset(&addr, 0, sizeof(addr));
@@ -230,8 +230,6 @@ void ProxyClient::onRead(const std::string &str)
         std::string host;
         std::string port;
 
-        std::cerr << "SIZE: " << host_port.size() << "\n";
-
         if (host_port.size() != 2)
         {
             host = _req._headers.header("Host");
@@ -259,7 +257,17 @@ void ProxyClient::onRead(const std::string &str)
 
         if (_req._headers._method == "CONNECT")
         {
-            int proxy_sd = non_blocked_connect(host, std::stoi(port));
+            int proxy_sd = -1;
+            try
+            {
+                proxy_sd = non_blocked_connect(host, std::stoi(port));
+            }
+            catch(const std::exception &e)
+            {
+                std::cerr << "[E] connect: " << e.what() << "\n";
+                close(_sd);
+                return;
+            }
             set_non_blocked(proxy_sd, false);
 
             _partner = new ProxyClient(proxy_sd, _ev);
@@ -274,9 +282,20 @@ void ProxyClient::onRead(const std::string &str)
 
         if (_req._headers._method == "GET"
             || _req._headers._method == "POST"
+            || _req._headers._method == "OPTIONS"
             )
         {
-            int proxy_sd = non_blocked_connect(host, std::stoi(port));
+            int proxy_sd = -1;
+            try
+            {
+                proxy_sd = non_blocked_connect(host, std::stoi(port));
+            }
+            catch(const std::exception &e)
+            {
+                std::cerr << "[E] connect: " << e.what() << "\n";
+                close(_sd);
+                return;
+            }
 
             // nonblocked socket never blocks, so epoll always returns immediately
             set_non_blocked(proxy_sd, false);
