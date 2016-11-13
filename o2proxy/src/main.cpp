@@ -1,5 +1,7 @@
 #include <iostream>
+
 #include "server.hpp"
+#include "logger.hpp"
 
 int main(int argc, char *argv[])
 {
@@ -15,7 +17,7 @@ int main(int argc, char *argv[])
     }
     catch (const std::exception &e)
     {
-        std::cerr << "Terminated: " << e.what() << std::endl;
+        logi("Terminated: {0}", e.what());
     }
     return 0;
 }
