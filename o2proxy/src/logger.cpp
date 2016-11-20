@@ -46,5 +46,6 @@ const Logger& Logger::get()
 
 void logi(const std::string &text)
 {
-    std::cout << text << std::endl;
+    const Logger &l = Logger::get();
+    l.log(text);
 }
