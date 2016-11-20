@@ -282,6 +282,7 @@ void ProxyClient::onRead(const std::string &str)
         if (_req._headers._method == "GET"
             || _req._headers._method == "POST"
             || _req._headers._method == "OPTIONS"
+            || _req._headers._method == "HEAD"
             )
         {
             int proxy_sd = -1;
