@@ -3,8 +3,7 @@
 #include "poll_async.hpp"
 #include "epoll.hpp"
 #include "select.hpp"
-
-#include <iostream>
+#include "logger.hpp"
 
 namespace 
 {
@@ -31,8 +30,7 @@ namespace
             case engine_t::UNKNOWN: throw std::logic_error("unknown engine type");
         }
 
-        std::cerr << "use engine: " << "epoll" << "\n";
-
+        logi("use engine: ", "epoll");
         return ret;
     }
 }

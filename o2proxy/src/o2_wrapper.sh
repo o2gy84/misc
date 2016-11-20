@@ -24,6 +24,7 @@ while true; do
     then
         d=`date`
         echo "[${d}] ${O2_PROXY} not running.. restart ${O2_PROXY}"
+        ulimit -c unlimited
         nohup ${BIN} -p 7788 1>>o2proxy.log 2>&1 &
     else
         :

@@ -8,16 +8,18 @@ int main(int argc, char *argv[])
     try
     {
         Options opt(argc, argv);
+        Logger::get().logLevel(opt._log_level);
+
         opt.dump();
         Config conf("");
 
-        Server serv(opt, conf);
-        serv.run();
+        Server s(opt, conf);
+        s.run();
         return 0;
     }
     catch (const std::exception &e)
     {
-        logi("Terminated: {0}", e.what());
+        loge("terminated: ", e.what());
     }
     return 0;
 }

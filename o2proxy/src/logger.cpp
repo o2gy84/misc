@@ -31,21 +31,23 @@ int braced_number(const std::string &s)
     return ret;
 }
 
-}
+}   // namespace
 
 
 Logger::Logger()
 {
+    _log_level = 0;
 }
 
-const Logger& Logger::get()
+void Logger::logLevel(uint16_t level)
+{
+    if (level < 0) level = 0;
+    if (level > 5) level = 5;
+    _log_level = level;
+}
+
+Logger& Logger::get()
 {
     static Logger logger;
     return logger;
-}
-
-void logi(const std::string &text)
-{
-    const Logger &l = Logger::get();
-    l.log(text);
 }

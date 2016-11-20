@@ -14,6 +14,7 @@
 
 #include "utils.hpp"
 #include "engine.hpp"
+#include "logger.hpp"
 
 static const uint32_t kListenQueueSize = 1024;
 
@@ -34,7 +35,7 @@ Engine::Engine(int port)
         rimap_local_ip_ptr[2] = ipf[2];
         rimap_local_ip_ptr[3] = ipf[3];
 
-        std::cerr << "localhost resolved: " << utils::int2ipv4(cur_interface_ip) << ", uint: " << cur_interface_ip << std::endl;
+        logi("localhost resolved: {0}, as_uint: {1}", utils::int2ipv4(cur_interface_ip), cur_interface_ip);
 
         ++pAddr;
         m_LocalIPs.push_back(cur_interface_ip);
@@ -58,7 +59,7 @@ bool Engine::isMyHost(const std::string &host) const
     struct hostent* hp = gethostbyname(host.data());
     if (NULL == hp)
     {
-        std::cerr << "Engine: [" << host << "] resolve error: " << std::string(strerror(errno)) << "\n";
+        loge("engine: [{0}] resolve error: {1}", host, std::string(strerror(errno)));
         return false;
     }
 
@@ -117,8 +118,7 @@ int Engine::listenSocket(uint32_t port, uint32_t listen_queue_size)
 
     listen(sd, listen_queue_size);
 
-    std::cerr << "listen to: " << port << std::endl;
+    logi("listen to: ", port);
     return sd;
 }
-
 

@@ -11,7 +11,7 @@
 
 #include "proxy_client.hpp"
 #include "utils.hpp"
-
+#include "logger.hpp"
 
 
 namespace 
@@ -70,7 +70,7 @@ namespace
         if (connected == -1 && errno != EINPROGRESS)
         {
             ::close(sd);
-            std::cerr << "connect error: " << strerror(errno) << "\n";
+            loge("connect error: ", strerror(errno));
             return -1;
         }
         return sd;
@@ -252,7 +252,7 @@ void ProxyClient::onRead(const std::string &str)
             return;
         }
 
-        std::cerr << "[I] connect to: " << host << ":" << port << "\n";
+        logi("connect to {0}:{1}", host, port);
 
         if (_req._headers._method == "CONNECT")
         {
@@ -263,7 +263,7 @@ void ProxyClient::onRead(const std::string &str)
             }
             catch(const std::exception &e)
             {
-                std::cerr << "[E] connect: " << e.what() << "\n";
+                loge("connect: ", e.what());
                 close(_sd);
                 return;
             }
@@ -292,7 +292,7 @@ void ProxyClient::onRead(const std::string &str)
             }
             catch(const std::exception &e)
             {
-                std::cerr << "[E] connect: " << e.what() << "\n";
+                loge("connect: ", e.what());
                 close(_sd);
                 return;
             }
@@ -326,7 +326,7 @@ void ProxyClient::onRead(const std::string &str)
 
         if (_partner == NULL)
         {
-            std::cerr << "PARTNER1 IS NULL !\n";
+            loge("PARTNER1 IS NULL !");
             return;
         }
 
@@ -345,7 +345,7 @@ void ProxyClient::onRead(const std::string &str)
 
         if (_partner == NULL)
         {
-            std::cerr << "PARTNER2 IS NULL !\n";
+            loge("PARTNER2 IS NULL !");
             return;
         }
 
@@ -370,7 +370,7 @@ void ProxyClient::onWrite()
     //std::cerr << "partner: " << (void*)_partner << "\n";
     if (cs == NULL)
     {
-        std::cerr << "\t\t\tPARTNER IS NULL ON WRITE!\n";
+        loge("\t\t\tPARTNER IS NULL ON WRITE!");
         _ev->changeEvents(this, engine::event_t::EV_NONE);
         return;
     }
@@ -391,8 +391,8 @@ void ProxyClient::onWrite()
 
         if (rc <= 0)
         {
-            std::cerr << "[" << _sd << "] proxy->target send error: " << rc << ", " << strerror(errno)
-                      << ", wasnt sent: " << _partner->_stream.stream().size() << " bytes\n";
+            loge("[{0}] proxy->target send error: {1}, {2}, wasnt sent: {3} bytes", _sd, rc,
+                    strerror(errno), _partner->_stream.stream().size());
         }
         else
         {
@@ -413,8 +413,8 @@ void ProxyClient::onWrite()
 
         if (rc <= 0)
         {
-            std::cerr << "[" << _sd << "] proxy->browser error: " << rc << ", " << strerror(errno)
-                      << ", wasnt sent: " << _partner->_stream.stream().size() << " bytes\n";
+            loge("[{0}] proxy->browser send error: {1}, {2}, wasnt sent: {3} bytes", _sd, rc,
+                    strerror(errno), _partner->_stream.stream().size());
         }
         else
         {

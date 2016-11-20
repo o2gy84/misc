@@ -1,11 +1,13 @@
 #include <string>
 
+
 /*
     Programm option class.
 */
 struct Options
 {
     Options(int count, const char *const *args);
+    void init() noexcept;
     void dump() const noexcept;
 
     uint16_t _log_level;
