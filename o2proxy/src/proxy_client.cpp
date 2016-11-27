@@ -190,6 +190,7 @@ ProxyClient::ProxyClient(int sd, Engine *ev): Client(sd), _ev(ev)
 ProxyClient::~ProxyClient()
 {
     std::cerr << "~DESTROY: " << _sd << "\n";
+    _sd = -1;
 }
 
 
@@ -435,14 +436,15 @@ void ProxyClient::onDead()
 {
     if (_partner != NULL)
     {
-        std::cerr << "~delete partner: " << _partner->sd() << "\n";
-        delete _partner;
-
-        //::close(_partner->sd());
-        //if (_partner->_partner != NULL)
-        //{
-            //_partner->_partner = NULL;
-        //}
+        // теоретически, после закрытия сокета event-loop это обнаружит
+        // и объект _partner должен быть удален
+ 
+        std::cerr << "close partner socket: " << _partner->sd() << "\n";
+        //std::cerr << "~delete partner: " << _partner->sd() << "\n";
+        if (_partner->sd() != -1)
+        {
+            ::close(_partner->sd());
+        }
+        //delete _partner;
     }
 }
-
