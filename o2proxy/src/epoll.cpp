@@ -20,7 +20,7 @@
 #include "epoll.hpp"
 #include "utils.hpp"
 #include "proxy_client.hpp"
-
+#include "logger.hpp"
 
 static void accept_action(int epfd, int listener, Engine *ev)
 {
@@ -40,8 +40,11 @@ static void accept_action(int epfd, int listener, Engine *ev)
     struct epoll_event cli_ev;
     memset(&cli_ev, 0, sizeof(struct epoll_event));
 
+    ProxyClient *pc = new ProxyClient(cli_sd, ev);
+    pc->setClientIP(client.sin_addr.s_addr);
+
     // NB: data - is an UNION !!!
-    cli_ev.data.ptr = new ProxyClient(cli_sd, ev);
+    cli_ev.data.ptr = pc;
 
     // TODO: EPOLLONESHOT
     cli_ev.events = EPOLLIN;                            // level-triggered, by default
@@ -49,33 +52,18 @@ static void accept_action(int epfd, int listener, Engine *ev)
 
     if (0 != epoll_ctl(epfd, EPOLL_CTL_ADD, cli_sd, &cli_ev))
     {
-        std::cerr << "error add to epoll!\n";
+        loge("error add to epoll: ", strerror(errno));
     }
     else
     {
-        std::cerr << "new client: " << cli_sd << ", ptr: " << (void*)cli_ev.data.ptr << "\n";
+        logd2("new client: {0}, ptr: {1}", cli_sd, (void*)cli_ev.data.ptr);
     }
-
 }
 
 void EpollEngine::changeEvents(Client *c, engine::event_t events)
 {
     struct epoll_event ev;
     ev.data.ptr = c;
-
-    if (0)
-    if (events == engine::event_t::EV_NONE)
-    {
-        if (0 != epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, c->_sd, &ev))
-        {
-            std::cerr << "error add to epoll!\n";
-        }
-        else
-        {
-            std::cerr << "del client from epoll: " << c->_sd << ", ptr: " << (void*)c << "\n";
-        }
-        return;
-    }
 
     if (events == engine::event_t::EV_READ)
     {
@@ -89,16 +77,15 @@ void EpollEngine::changeEvents(Client *c, engine::event_t events)
     }
     else if (events == engine::event_t::EV_NONE)
     {
-        std::cerr << "no waiting for events: " << c->_sd << ", ptr: " << (void*)c << "\n";
+        logd4("no waiting for events [sd: {0}, ptr: {1}]", c->_sd, (void*)c);
         ev.events = 0;
     }
-
 
     bool ret = (epoll_ctl(_epoll_fd, EPOLL_CTL_MOD, c->_sd, &ev) == 0);
 
     if (!ret)
     {
-        std::cerr << "[" << c->_sd <<  "] epol_ctl error!\n";
+        loge("epol_ctl error on sd: ", c->_sd);
     }
 
     return;
@@ -123,11 +110,11 @@ void EpollEngine::addToEventLoop(Client *c, engine::event_t events)
 
     if (0 != epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, c->_sd, &cli_ev))
     {
-        std::cerr << "error add to epoll!\n";
+        loge("error add to epoll on sd: ", c->_sd);
     }
     else
     {
-        std::cerr << "added to event loop: " << c->_sd << ", ptr: " << (void*)cli_ev.data.ptr << "\n";
+        logd3("added to event loop [sd: {0}, ptr: {1}]", c->_sd, (void*)cli_ev.data.ptr);
     }
 }
 
@@ -151,14 +138,14 @@ void EpollEngine::eventLoop()
         std::vector<Client*> disconnected_clients;
         int epoll_ret = epoll_wait (_epoll_fd, events, max_epoll_clients, -1);
 
-        //std::cerr << "epoll_ret: " << epoll_ret << "\n";
+        //logd5("epoll_ret: ", epoll_ret);
 
         if (epoll_ret == 0) continue;
         if (epoll_ret == -1) throw std::runtime_error(std::string("poll: ") + strerror(errno));
   
         for (int i = 0; i < epoll_ret; ++i)
         {
-            //std::cerr << "test: " << events[i].data.fd  << ", " << (void*)events[i].data.ptr << "\n";
+            //logd5("test [sd: {0}, ptr: {1}], events[i].data.fd, (void*)events[i].data.ptr);
             //sleep(1);
 
             if (events[i].data.fd == listener())
@@ -171,7 +158,7 @@ void EpollEngine::eventLoop()
             {
                 // e.g. previous write() was in a already closed sd
                 Client *c = static_cast<Client*>(events[i].data.ptr);
-                std::cerr << "[" << c->_sd << "] hup\n";
+                logw("hup on sd: ", c->_sd);
 
                 disconnected_clients.push_back(c);
             }
@@ -184,25 +171,22 @@ void EpollEngine::eventLoop()
                 char buf[65536 * 2];
                 memset(buf, 0, sizeof(buf));
 
-
                 int r = ::read(c->_sd, buf, sizeof(buf) - 1);
                 buf[r] = '\0';
 
-                //std::cerr << "event loop readed: " << r << " bytes\n";
-
                 if (r < 0 && errno != EAGAIN)
                 {
-                    std::cerr << "[" << c->_sd << "] read error: " << strerror(errno) << std::endl;
+                    loge("read error [sd: {0}, e: {1}]", c->_sd, strerror(errno));
                     disconnected_clients.push_back(c);
                 }
                 if (r < 0 && errno == EAGAIN)
                 {
-                    std::cerr << "[" << c->_sd << "] STRANGE CASE: " << strerror(errno) << std::endl;
+                    loge("egain, strange case [sd: {0}, e: {1}]", c->_sd, strerror(errno));
                     disconnected_clients.push_back(c);
                 }
                 else if (r == 0)
                 {
-                    std::cerr << "[" << c->_sd << "] disconnected" << std::endl;
+                    logd3("read EOF, disconnect on sd: ", c->_sd);
                     disconnected_clients.push_back(c);
                 }
                 else if (r > 0)
@@ -224,21 +208,21 @@ void EpollEngine::eventLoop()
             {
                 Client *cs = (Client*)events[i].data.ptr;
                 if (events[i].events & EPOLLERR)
-                    std::cerr<<"WARNING> events = EPOLLERR. [SD = " << cs->_sd <<"]\n";
+                    loge("event epollerr on sd: ", cs->_sd);
                 else
-                    std::cerr<<"WARNING> event = UNKNOWN_EVENT: "<< events[i].events <<" [SD = " << cs->_sd << "]\n";
+                    loge("event unknown [sd: {0}, events: {1}]", cs->_sd, static_cast<unsigned>(events[i].events));
             }
-        }       //for (int i = 0; i < epoll_ret; ++i)
+        }
 
         // remove disconnected clients
         if (disconnected_clients.size())
         {
-            std::cerr << "GC start. disconnect: " << disconnected_clients.size() << " clients" << std::endl;
+            logd2("GC start. disconnected clients: ", disconnected_clients.size());
             for (size_t i = 0; i < disconnected_clients.size(); ++i)
             {
                 // auto delete from epoll
                 int sd = disconnected_clients[i]->_sd;
-                std::cerr << "close: " << sd << ", delete: " << (void*)disconnected_clients[i] << std::endl;
+                logd3("close [sd: {0}, ptr: {1}]", sd, (void*)disconnected_clients[i]);
                 close(sd);
 
                 disconnected_clients[i]->onDead();

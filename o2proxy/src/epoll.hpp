@@ -1,5 +1,4 @@
-#ifndef _EPOLL_HPP
-#define _EPOLL_HPP
+#pragma once 
 
 #include "engine.hpp"
 
@@ -18,5 +17,3 @@ private:
     int _epoll_fd;
 
 };
-
-#endif

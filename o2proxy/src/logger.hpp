@@ -9,6 +9,13 @@
 #include <assert.h>
 
 
+/*
+    logi - [i] - info
+    logw - [w] - warning
+    loge - [e] - error
+    logd - [d] - debug [logd1, logd2, logd3, logd4, logd5]
+*/
+
 
 // can log into stdout, file, stream, syslog...
 class Logger

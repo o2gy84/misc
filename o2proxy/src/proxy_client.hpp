@@ -1,5 +1,4 @@
-#ifndef _PROXY_CLIENT_HPP
-#define _PROXY_CLIENT_HPP
+#pragma once
 
 #include "http.hpp"
 #include "client.hpp"
@@ -9,9 +8,7 @@
 class AbstractStream
 {
 public:
-    void dump(const std::string &prefix, const std::string &direction);
     void append(const std::string &str)     { _buf.append(str); }
-
     void clear()                            { _buf.clear(); }
     std::string stream()                    { return _buf; }
 
@@ -50,6 +47,9 @@ public:
     ProxyClient::state getState() const { return _state; }
     int sd() const { return _sd; }
 
+    // setters
+    void setClientIP(int ip) { _client_ip = ip; };
+
     // callbacks
     virtual void onRead(const std::string &str) override;
     virtual void onWrite() override;
@@ -58,10 +58,8 @@ public:
 public:
     // TODO: abstract protocol
     HttpRequest _req;
-    HttpRequest _resp;
-
     AbstractStream _stream;
-
+    int _client_ip;
 
 private:
 
@@ -69,9 +67,3 @@ private:
     ProxyClient                 *_partner;
     state                       _state;
 };
-
-
-
-
-
-#endif

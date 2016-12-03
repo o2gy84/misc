@@ -7,11 +7,10 @@
 
 class Server
 {
-    public:
-        Server(const Options &opt, const Config &conf);
-        void run();
+public:
+    Server(const Options &opt, const Config &conf);
+    void run();
 
-    private:
-
-        std::unique_ptr<Engine> m_Engine;
+private:
+    std::unique_ptr<Engine> m_Engine;
 };

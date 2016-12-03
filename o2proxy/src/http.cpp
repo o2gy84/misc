@@ -6,6 +6,7 @@
 
 #include "utils.hpp"
 #include "http.hpp"
+#include "logger.hpp"
 
 
 std::string HttpHeaders::toString() const
@@ -37,7 +38,7 @@ void HttpHeaders::parseFirstRequestLine(const std::string &str)
     std::vector<std::string> parts = utils::split(str, " ");
     if (parts.size() < 3)
     {
-        std::cerr << "broken header: " << str << "\n";
+        loge("broken header: ", str);
         return;
     }
 
@@ -120,33 +121,37 @@ std::string HttpRequest::toString() const
 }
 
 
-void HttpRequest::dump(const std::string &prefix, const std::string &direction) const
+std::string HttpRequest::dump() const
 {
-    std::cerr << prefix << " <<<DUMP START>>>\n";
+    std::stringbuf stringbuf;
+    std::ostream os(&stringbuf);
 
-    std::cerr <<  direction << _headers._method << " " << _headers._resource << " " << _headers._version;
+    os << "<<<DUMP START>>>\n";
+    os << _headers._method << " " << _headers._resource << " " << _headers._version;
 
     if (_headers._headers.size())
     {
-        std::cerr << "\r\n";
+        os << "\r\n";
     }
 
     size_t counter = 0;
     for (auto h = _headers._headers.begin(); h != _headers._headers.end(); ++h)
     {
-        std::cerr << direction << h->first << ": " << h->second;
+        os << h->first << ": " << h->second;
         ++counter;
         if (counter < _headers._headers.size())
         {
-            std::cerr << "\r\n";
+            os << "\r\n";
         }
     }
-    std::cerr << "\r\n";
+    os << "\r\n";
 
     std::string hdr = _headers.toString();
-    std::cerr << "headers: " << hdr.size() << " bytes, body: " << _body.size() 
-              << " bytes, total: " << hdr.size() + _body.size() << " bytes (without \\r\\n\\r\\n)\n";
-    std::cerr << "<<<DUMP END>>>\n";
+    os  << "headers: " << hdr.size() << " bytes"
+        << ", body: " << _body.size() << " bytes"
+        << ", total: " << hdr.size() + _body.size() << " bytes (without \\r\\n\\r\\n)\n";
+    os << "<<<DUMP END>>>";
+    return stringbuf.str();
 }
 
 void HttpRequest::clear()
@@ -181,15 +186,12 @@ void HttpRequest::processChunked(const std::string &str, std::string::size_type 
 
         std::string chunk_sz = str.substr(start_block, start_chunk - start_block);
         _chunk_size = std::stoi(chunk_sz, nullptr, 16);
-        std::cerr << "FIRST CHUNK SIZE string: " << chunk_sz << ", dec: " << _chunk_size << "\n";
 
         begin_content = start_chunk + 2;    // + "\r\n"
         end_content = begin_content + _chunk_size;
     }
 
     size_t total_left_len = str.size() - begin_content;
-
-    std::cerr << "total_left: " << total_left_len << ", _chunk: " << _chunk_size << "\n";
 
     if (_chunk_size >= total_left_len)
     {
@@ -203,7 +205,6 @@ void HttpRequest::processChunked(const std::string &str, std::string::size_type 
     while (true)
     {
         std::string t1(str.begin() + begin_content, str.begin() + begin_content + 5);
-        std::cerr << "t1: " << t1 << "\n";
 
         _body.append(str.begin() + begin_content, str.begin() + end_content);
 
@@ -211,7 +212,7 @@ void HttpRequest::processChunked(const std::string &str, std::string::size_type 
         if (test != "\r\n")
         {
             // TODO: !!!
-            std::cerr << "bad chunked format (broken crlf). test: " << test << "\n";
+            loge("bad chunked format (broken crlf). test: ", test);
             sleep(2);
             throw std::runtime_error("bad chunked format (broken crlf)");
             //_chunk_size -= (end_content - begin_content);
@@ -233,7 +234,6 @@ void HttpRequest::processChunked(const std::string &str, std::string::size_type 
 
         std::string chunk_sz = str.substr(start_next_block, start_new_chunk - start_next_block);
         _chunk_size = std::stoi(chunk_sz, nullptr, 16);
-        std::cerr << "SECOND CHUNK SIZE string: " << chunk_sz << ", dec: " << _chunk_size << "\n";
 
         if (_chunk_size == 0)
         {
@@ -320,12 +320,3 @@ void HttpRequest::append(const std::string &str)
 
     // need more bytes
 }
-
-void HttpRequest::appendAsIs(const std::string &str)
-{
-    _headers_string.clear();
-    _body.append(str.begin(), str.end());
-}
-
-
-

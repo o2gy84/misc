@@ -112,69 +112,6 @@ std::string state2string(ProxyClient::state state)
     throw std::runtime_error("ProxyClient: unknown state");
 }
 
-void AbstractStream::dump(const std::string &prefix, const std::string &direction)
-{
-    //std::cerr << direction << prefix << " " << _buf.substr(0,  1024) << " [" << _buf.size() << " bytes]\n";
-    //return;
-
-
-    std::string::size_type pos = _buf.find("\r\n");
-    if (pos == std::string::npos)
-    {
-        size_t max = std::min((size_t)_buf.size(), (size_t)10);
-        std::string tmp = _buf.substr(0, max);
-
-        if (max == 0)
-        {
-            std::cerr << direction << prefix << " stream empty\n";
-        }
-        else
-        {
-            bool is_readable = true;
-            for (size_t i = 0; i < max; ++i)
-            {
-                if (isalpha(tmp[i]) || isspace(tmp[i]))
-                    continue;
-
-                is_readable = false;
-            }
-
-            if (is_readable)
-            {
-                std::cerr << direction << prefix << " " << tmp << " [" << max << " bytes]\n";
-            }
-            else
-            {
-                std::cerr << direction << prefix << " binary stream\n";
-            }
-        }
-        return;
-    }
-    
-    size_t max = std::min((size_t)pos, (size_t)100);
-    std::string tmp = _buf.substr(0, max);
-
-
-    bool is_readable = true;
-    for (size_t i = 0; i < max; ++i)
-    {
-        if (isprint(tmp[i]))
-            continue;
-
-        is_readable = false;
-    }
-
-    if (is_readable)
-    {
-        std::cerr << direction << prefix << " " << tmp << " [" << max << " bytes]\n";
-    }
-    else
-    {
-        std::cerr << direction << prefix << " binary stream\n";
-    }
-}
-
-
 void bind(ProxyClient *to_browser, ProxyClient *to_target)
 {
     to_browser->_partner = to_target;
@@ -189,21 +126,20 @@ ProxyClient::ProxyClient(int sd, Engine *ev): Client(sd), _ev(ev)
 
 ProxyClient::~ProxyClient()
 {
-    std::cerr << "~DESTROY: " << _sd << "\n";
+    logd4("~DESTROY: ", _sd);
     _sd = -1;
 }
 
 
 void ProxyClient::nextState(ProxyClient::state new_state)
 { 
-    //std::cerr << "[" << _sd << "] " <<"STATE: \"" << state2string(_state) << "\" --> \"" << state2string(new_state) << "\"\n";
-
     _state = new_state;
 }
 
 void ProxyClient::onRead(const std::string &str)
 {
-    std::cerr << "[" << _sd << " (" << (_partner? _partner->sd() : -1) << ")] onRead: " << str.size() << " bytes [state: " << state2string(_state) << "]\n";
+    logd3("onRead [sd: {0}, partner: {1}, state: {2}, bytes: {3}]", _sd, ((_partner)? _partner->sd() : -1),
+            state2string(_state), str.size());
 
     if (_state == state::INIT_STATE)
     {
@@ -217,13 +153,14 @@ void ProxyClient::onRead(const std::string &str)
             return;
         }
 
-        _req.dump("ProxyClient: onRead req", "<<< ");
+        logi("client: {0}, sd: {1}, request: {2} {3}", utils::int2ipv4(_client_ip), _sd, _req.headers()._method,
+                _req.headers()._resource);
+        logd4("new request dump: ", _req.dump());
 
-
-        std::string destination = _req._headers.header("Host");
-        if (_req._headers._method == "CONNECT")
+        std::string destination = _req.headers().header("Host");
+        if (_req.headers()._method == "CONNECT")
         {
-            destination = _req._headers._resource;
+            destination = _req.headers()._resource;
         }
 
         std::vector<std::string> host_port = utils::split(destination, ":");
@@ -232,13 +169,18 @@ void ProxyClient::onRead(const std::string &str)
 
         if (host_port.size() != 2)
         {
-            host = _req._headers.header("Host");
+            host = _req.headers().header("Host");
             port = "80";
         }
         else
         {
             host = host_port[0];
             port = host_port[1];
+        }
+
+        if (host.empty())
+        {
+            loge("host is empty. request dump: ", _req.dump());
         }
 
         if (_ev->isMyHost(host))
@@ -253,9 +195,7 @@ void ProxyClient::onRead(const std::string &str)
             return;
         }
 
-        logi("connect to {0}:{1}", host, port);
-
-        if (_req._headers._method == "CONNECT")
+        if (_req.headers()._method == "CONNECT")
         {
             int proxy_sd = -1;
             try
@@ -280,10 +220,10 @@ void ProxyClient::onRead(const std::string &str)
             return;
         }
 
-        if (_req._headers._method == "GET"
-            || _req._headers._method == "POST"
-            || _req._headers._method == "OPTIONS"
-            || _req._headers._method == "HEAD"
+        if (_req.headers()._method == "GET"
+            || _req.headers()._method == "POST"
+            || _req.headers()._method == "OPTIONS"
+            || _req.headers()._method == "HEAD"
             )
         {
             int proxy_sd = -1;
@@ -323,8 +263,6 @@ void ProxyClient::onRead(const std::string &str)
     if (_state == state::WANT_READ_FROM_TARGET)
     {
         _stream.append(str);
-        //_stream.dump("ReadFromTarget: ", "<<< ");
-
         if (_partner == NULL)
         {
             loge("PARTNER1 IS NULL !");
@@ -342,8 +280,6 @@ void ProxyClient::onRead(const std::string &str)
     if (_state == state::WANT_READ_FROM_CLI)
     {
         _stream.append(str);
-        //_stream.dump("ReadFromCli: ", "<<< ");
-
         if (_partner == NULL)
         {
             loge("PARTNER2 IS NULL !");
@@ -365,13 +301,13 @@ void ProxyClient::onRead(const std::string &str)
 
 void ProxyClient::onWrite()
 {
-    std::cerr << "[" << _sd << " (" << ((_partner)? _partner->sd() : -1) << ")] ProxyClient onWrite [state: " << state2string(_state) << "]\n";
+    logd3("onWrite [sd: {0}, partner: {1}, state: {2}]", _sd, ((_partner)? _partner->sd() : -1), state2string(_state));
 
     Client *cs = static_cast<Client*>(_partner);
-    //std::cerr << "partner: " << (void*)_partner << "\n";
+    //logd5("partner: ", (void*)_partner);
     if (cs == NULL)
     {
-        loge("\t\t\tPARTNER IS NULL ON WRITE!");
+        loge("PARTNER IS NULL ON WRITE");
         _ev->changeEvents(this, engine::event_t::EV_NONE);
         return;
     }
@@ -387,9 +323,7 @@ void ProxyClient::onWrite()
 
     if (_state == state::WANT_WRITE_TO_TARGET)
     {
-        _partner->_stream.dump("ProxyToRemoteServer onWrite: ", ">>> ");
         int rc = send(_sd, _partner->_stream.stream());
-
         if (rc <= 0)
         {
             loge("[{0}] proxy->target send error: {1}, {2}, wasnt sent: {3} bytes", _sd, rc,
@@ -397,7 +331,7 @@ void ProxyClient::onWrite()
         }
         else
         {
-            std::cerr << "[" << _sd << "] proxy->target send: " << rc << " bytes\n";
+            logd4("proxy->target send [sd: {0}, bytes: {1}]", _sd, rc);
         }
 
         _partner->_stream.clear();
@@ -409,9 +343,7 @@ void ProxyClient::onWrite()
 
     if (_state == state::WANT_WRITE_TO_CLI)
     {
-        _partner->_stream.dump("ProxyToBrowser onWrite: ", ">>> ");
         int rc = send(_sd, _partner->_stream.stream());
-
         if (rc <= 0)
         {
             loge("[{0}] proxy->browser send error: {1}, {2}, wasnt sent: {3} bytes", _sd, rc,
@@ -419,7 +351,7 @@ void ProxyClient::onWrite()
         }
         else
         {
-            std::cerr << "[" << _sd << "] proxy->browser send: " << rc << " bytes\n";
+            logd4("proxy->browser send [sd: {0}, bytes: {1}]", _sd, rc);
         }
 
         _partner->_stream.clear();
@@ -434,17 +366,17 @@ void ProxyClient::onWrite()
 
 void ProxyClient::onDead()
 {
-    if (_partner != NULL)
+    if (_partner == NULL)
     {
-        // теоретически, после закрытия сокета event-loop это обнаружит
-        // и объект _partner должен быть удален
+        return;
+    }
+
+    // теоретически, после закрытия сокета event-loop это обнаружит
+    // и объект _partner должен быть удален
  
-        std::cerr << "close partner socket: " << _partner->sd() << "\n";
-        //std::cerr << "~delete partner: " << _partner->sd() << "\n";
-        if (_partner->sd() != -1)
-        {
-            ::close(_partner->sd());
-        }
-        //delete _partner;
+    logd3("close partner socket: ", _partner->sd());
+    if (_partner->sd() != -1)
+    {
+        ::close(_partner->sd());
     }
 }
