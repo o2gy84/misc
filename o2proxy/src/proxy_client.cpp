@@ -197,6 +197,7 @@ void ProxyClient::onRead(const std::string &str)
             nextState(ProxyClient::state::WANT_WRITE_TO_CLI);
             _ev->changeEvents(this, engine::event_t::EV_WRITE);
             _req.clear();
+            shutdown(_sd, SHUT_RD);
             return;
         }
 
