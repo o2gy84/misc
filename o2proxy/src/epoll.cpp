@@ -2,6 +2,7 @@
 #include <sys/socket.h>     // socket()
 #include <netinet/in.h>     // htons(), INADDR_ANY
 #include <netinet/tcp.h>    // SOL_TCP
+#include <signal.h>
 
 #include <errno.h>
 #include <assert.h>
@@ -11,6 +12,7 @@
 #include <stdint.h>     // uint32_t
 #include <string.h>
 
+#include <atomic>
 #include <iostream>
 #include <set>
 #include <thread>
@@ -21,6 +23,20 @@
 #include "utils.hpp"
 #include "proxy_client.hpp"
 #include "logger.hpp"
+
+
+namespace
+{
+
+std::atomic<bool> g_Stop(false);
+
+void sig_handler(int signum)
+{
+    g_Stop = true;
+}
+
+}
+
 
 static void accept_action(int epfd, int listener, Engine *ev)
 {
@@ -123,6 +139,8 @@ void EpollEngine::addToEventLoop(Client *c, engine::event_t events)
 
 void EpollEngine::eventLoop()
 {
+    logi("start even loop");
+
     const int max_epoll_clients = 32768;                    // 2^15
     _epoll_fd = epoll_create(/*max cli*/max_epoll_clients);
 
@@ -136,7 +154,7 @@ void EpollEngine::eventLoop()
 
     struct epoll_event *events = (struct epoll_event*)malloc(max_epoll_clients * sizeof(struct epoll_event));
 
-    while (1)
+    while (!g_Stop)
     {
         std::vector<Client*> disconnected_clients;
         int epoll_ret = epoll_wait (_epoll_fd, events, max_epoll_clients, -1);
@@ -144,7 +162,14 @@ void EpollEngine::eventLoop()
         //logd5("epoll_ret: ", epoll_ret);
 
         if (epoll_ret == 0) continue;
-        if (epoll_ret == -1) throw std::runtime_error(std::string("poll: ") + strerror(errno));
+        if (epoll_ret == -1)
+        {
+            if (g_Stop)
+            {
+                break;
+            }
+            throw std::runtime_error(std::string("poll: ") + strerror(errno));
+        }
   
         for (int i = 0; i < epoll_ret; ++i)
         {
@@ -234,9 +259,16 @@ void EpollEngine::eventLoop()
             }
         }
     }
+
+    logi("server stopped");
+    free(events);
+    close(_epoll_fd);
+
+    // TODO: need delete all the clients
 }
 
 void EpollEngine::run()
 {
+    signal(SIGINT, sig_handler);
     eventLoop();
 }
