@@ -155,7 +155,8 @@ void ProxyClient::onRead(const std::string &str)
 
         logi("client: {0}, sd: {1}, request: {2} {3}", utils::int2ipv4(_client_ip), _sd, _req.headers()._method,
                 _req.headers()._resource);
-        logd4("new request dump: ", _req.dump());
+        
+        //logd4("new request dump: ", _req.dump());
 
         std::string destination = _req.headers().header("Host");
         if (_req.headers()._method == "CONNECT")
@@ -180,7 +181,11 @@ void ProxyClient::onRead(const std::string &str)
 
         if (host.empty())
         {
-            loge("host is empty. request dump: ", _req.dump());
+            loge("host is empty. close connection. request dump: ", _req.dump());
+
+            // shutdown with RDWR allow epoll to trigger event and delete this client
+            shutdown(_sd, SHUT_RDWR);
+            return;
         }
 
         if (_ev->isMyHost(host))
@@ -253,8 +258,10 @@ void ProxyClient::onRead(const std::string &str)
 
             return;
         }
-            
-        throw std::runtime_error("UNKNOWN HTTP REQUEST!");
+
+        loge("unknown http request. close connection. request dump: ", _req.dump());
+        shutdown(_sd, SHUT_RDWR);
+        return;
     }
 
     _req.clear();
@@ -374,9 +381,9 @@ void ProxyClient::onDead()
     // теоретически, после закрытия сокета event-loop это обнаружит
     // и объект _partner должен быть удален
  
-    logd3("close partner socket: ", _partner->sd());
+    logd3("shutdown partner socket: ", _partner->sd());
     if (_partner->sd() != -1)
     {
-        ::close(_partner->sd());
+        shutdown(_partner->sd(), SHUT_RDWR);
     }
 }

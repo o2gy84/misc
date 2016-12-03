@@ -34,12 +34,12 @@ struct HttpRequest
     HttpRequest();
     const HttpHeaders& headers() const { return _headers; }
 
-    std::string dump() const;
     void append(const std::string &str);
     bool valid() const { return _request_valid; }
     void clear();
 
-    std::string toString() const;
+    std::string dump() const;       // debug
+    std::string toString() const;   // request as string
 
 private:
     void processChunked(const std::string &str, std::string::size_type start_block);

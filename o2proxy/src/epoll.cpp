@@ -30,6 +30,7 @@ static void accept_action(int epfd, int listener, Engine *ev)
 
     int cli_sd = accept(listener, (struct sockaddr*)&client, &cli_len);
 
+    // TODO: set some options?
     //int yes = 1;
     //int keepidle = 10;  // sec
     //setsockopt(cli_sd, SOL_SOCKET, SO_KEEPALIVE, &yes, sizeof(yes));
@@ -43,12 +44,14 @@ static void accept_action(int epfd, int listener, Engine *ev)
     ProxyClient *pc = new ProxyClient(cli_sd, ev);
     pc->setClientIP(client.sin_addr.s_addr);
 
-    // NB: data - is an UNION !!!
+    // NB: data - is an UNION
     cli_ev.data.ptr = pc;
 
-    // TODO: EPOLLONESHOT
-    cli_ev.events = EPOLLIN;                            // level-triggered, by default
-    //cli_ev.events = EPOLLIN | EPOLLOUT | EPOLLET;     // ET - edge-triggered
+    // use level-triggered (LT), by default.
+    // edge-triggered (ET) mode doesn't good thing in this case, because 
+    // when browser works via ssl, we don't know about how much data
+    // we need to read, so we just read all available data on each EPOLLIN event.
+    cli_ev.events = EPOLLIN;
 
     if (0 != epoll_ctl(epfd, EPOLL_CTL_ADD, cli_sd, &cli_ev))
     {
