@@ -193,7 +193,7 @@ void ProxyClient::onRead(const std::string &str)
              _partner = new ProxyClient(-1, _ev);
              bind(this, _partner);
  
-            _partner->_stream.append("HTTP/1.1 200 OK\r\nContent-Length: 7\r\n\r\no2proxy");
+            _partner->_stream.append("HTTP/1.1 200 OK\r\nContent-Length: 13\r\n\r\no2proxy ready");
             nextState(ProxyClient::state::WANT_WRITE_TO_CLI);
             _ev->changeEvents(this, engine::event_t::EV_WRITE);
             _req.clear();
