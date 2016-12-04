@@ -45,7 +45,11 @@ Engine::Engine(int port)
 
     m_Listener = listenSocket(port, kListenQueueSize);
     if (m_Listener <= 0)
-        throw std::runtime_error(std::string("error listen socket: ") + strerror(errno));
+    {
+        std::string what = std::string("error listen socket [port: ") + std::to_string(port);
+        what += std::string(", e: ") + strerror(errno) + "]";
+        throw std::runtime_error(what);
+    }
 }
 
 Engine::~Engine()

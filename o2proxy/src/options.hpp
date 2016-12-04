@@ -4,13 +4,17 @@
 /*
     Programm option class.
 */
-struct Options
+class Options
 {
+public:
     Options(int count, const char *const *args);
-    void init() noexcept;
     void dump() const noexcept;
 
-    uint16_t _log_level;
-    uint16_t _port;
-    std::string _config;
+public:
+    uint16_t        _log_level;
+    uint16_t        _port;
+    std::string     _config;
+
+private:
+    void init() noexcept;
 };

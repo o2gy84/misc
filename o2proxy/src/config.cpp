@@ -2,6 +2,11 @@
 
 Config::Config(const std::string &path)
 {
-    engine = engine_t::EPOLL;
+    init();
 }
 
+void Config::init()
+{
+    _port = 7788;
+    _engine = engine_t::EPOLL;
+}

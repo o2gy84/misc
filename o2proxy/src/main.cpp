@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
         Logger::get().logLevel(opt._log_level);
 
         opt.dump();
-        Config conf("");
+        Config conf(opt._config);
 
         Server s(opt, conf);
         s.run();

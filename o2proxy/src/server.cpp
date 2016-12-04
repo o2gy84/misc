@@ -37,14 +37,14 @@ namespace
 
 Server::Server(const Options &opt, const Config &conf)
 {
-    int port = conf.port;
+    int port = conf._port;
     if (opt._port)
     {
         // opt overrides
         port = opt._port;
     }
 
-    m_Engine = get_engine(conf.engine, port);
+    m_Engine = get_engine(conf._engine, port);
 }
 
 void Server::run()

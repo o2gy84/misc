@@ -13,10 +13,14 @@ enum class engine_t: uint8_t
 /*
     Programm config class.
 */
-struct Config
+class Config
 {
-        Config(const std::string &path);
+public:
+    Config(const std::string &path);
 
-        uint16_t port;
-        engine_t engine;
+    uint16_t _port;
+    engine_t _engine;
+
+private:
+    void init();
 };
