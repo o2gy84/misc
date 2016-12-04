@@ -23,6 +23,8 @@ namespace
 {
     void insert_resolved_ips(const std::string &host, std::vector<uint32_t> ips)
     {
+        if (host.empty()) return;
+
         struct hostent* hp = gethostbyname(host.c_str());
         if (NULL == hp)
             throw std::runtime_error("resolve localhost error: " + std::string(strerror(errno)));
