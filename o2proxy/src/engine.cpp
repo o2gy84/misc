@@ -21,7 +21,7 @@ static const uint32_t kListenQueueSize = 1024;
 
 namespace
 {
-    void insert_resolved_ips(const std::string &host, std::vector<uint32_t> ips)
+    void insert_resolved_ips(const std::string &host, std::vector<uint32_t> &ips)
     {
         if (host.empty()) return;
 
