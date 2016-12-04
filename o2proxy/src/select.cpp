@@ -12,6 +12,7 @@
 #include <algorithm>
 
 #include "select.hpp"
+#include "logger.hpp"
 
 void SelectEngine::manageConnections()
 {
@@ -22,18 +23,20 @@ void SelectEngine::manageConnections()
     {
         std::vector<int> disconnected_clients;
         FD_ZERO(&read_fds);
-        FD_SET(listener(), &read_fds);
         int fdmax = listener();
 
-        for (auto i: m_Clients)
+        for (const Client &c: m_Clients)
         {
-            if (i._sd > fdmax) fdmax = i._sd;
-            FD_SET(i._sd, &read_fds);
+            if (c._sd > fdmax) fdmax = c._sd;
+            FD_SET(c._sd, &read_fds);
         }
 
         int sel = select(fdmax + 1, /*read*/&read_fds, /*write*/NULL, /*exceptions*/NULL, /*timeout*/NULL);
         if (sel == -1)
-            exit(1);
+        {
+            throw std::runtime_error(std::string("select: ") + strerror(errno));
+        }
+
         if (sel == 0)
             continue;
 
@@ -105,8 +108,17 @@ void SelectEngine::manageConnections()
 
 void SelectEngine::run()
 {
-    std::cerr << "select server starts" << std::endl;
-
-    std::thread t(std::bind(&SelectEngine::manageConnections, this));
-    t.join();
+    logi("start even loop");
+    manageConnections();
+    /*
+    try
+    {
+        std::thread t(std::bind(&SelectEngine::manageConnections, this));
+        t.join();
+    }
+    catch (const std::exception &e)
+    {
+        throw;
+    }
+    */
 }

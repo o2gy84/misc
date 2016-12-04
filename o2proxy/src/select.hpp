@@ -5,15 +5,15 @@
 
 class SelectEngine: public Engine
 {
-    public:
-        explicit SelectEngine(int port): Engine(port) {}
-        virtual void run() override;
-        virtual void addToEventLoop(Client *c, engine::event_t events) override {};
-        virtual void changeEvents(Client *c, engine::event_t events) override {};
+public:
+    explicit SelectEngine(int port): Engine(port) {}
+    virtual void run() override;
+    virtual void addToEventLoop(Client *c, engine::event_t events) override {};
+    virtual void changeEvents(Client *c, engine::event_t events) override {};
 
-    private:
-        void manageConnections();
+private:
+    void manageConnections();
 
-    private:
-        std::vector<Client> m_Clients;
+private:
+    std::vector<Client> m_Clients;
 };

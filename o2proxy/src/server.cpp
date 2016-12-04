@@ -4,47 +4,52 @@
 #include "epoll.hpp"
 #include "select.hpp"
 #include "logger.hpp"
+#include "config.hpp"
 
 namespace 
 {
-    std::unique_ptr<Engine> get_engine(engine_t type, int port)
+    std::unique_ptr<Engine> get_engine(config::engine_t type, int port)
     {
         std::unique_ptr<Engine> ret;
         switch (type)
         {
-            case engine_t::SELECT: ret.reset (new SelectEngine(port)); break;
-            case engine_t::POLL:
+            case config::engine_t::SELECT:
             {
-                //if (async) ret.reset (new AsyncPollEngine(port));
-                if (1)      ret.reset (new AsyncPollEngine(port));
-                else        ret.reset (new PollEngine(port));
+                ret.reset(new SelectEngine(port));
                 break;
             }
-            case engine_t::EPOLL:
+            case config::engine_t::POLL:
             {
-                //if (async) ret.reset (new EpollEngine(port));
-                if (1)     ret.reset (new EpollEngine(port));
-                else       ret.reset (new EpollEngine(port)); 
+                //if (async) ret.reset(new AsyncPollEngine(port));
+                if (1)      ret.reset(new AsyncPollEngine(port));
+                else        ret.reset(new PollEngine(port));
                 break;
             }
-            case engine_t::UNKNOWN: throw std::logic_error("unknown engine type");
+            case config::engine_t::EPOLL:
+            {
+                //if (async) ret.reset(new EpollEngine(port));
+                if (1)     ret.reset(new EpollEngine(port));
+                else       ret.reset(new EpollEngine(port)); 
+                break;
+            }
+            case config::engine_t::UNKNOWN: throw std::logic_error("unknown engine type");
         }
 
-        logi("use engine: ", "epoll");
+        logi("use engine: ", engine2string(type));
         return ret;
     }
 }
 
-Server::Server(const Options &opt, const Config &conf)
+Server::Server(const Options &opt)
 {
-    int port = conf._port;
+    int port = Config::get()->_port;
     if (opt._port)
     {
         // opt overrides
         port = opt._port;
     }
 
-    m_Engine = get_engine(conf._engine, port);
+    m_Engine = get_engine(Config::get()->_engine, port);
 }
 
 void Server::run()

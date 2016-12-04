@@ -2,13 +2,12 @@
 
 #include "engine.hpp"
 #include "options.hpp"
-#include "config.hpp"
 
 
 class Server
 {
 public:
-    Server(const Options &opt, const Config &conf);
+    Server(const Options &opt);
     void run();
 
 private:

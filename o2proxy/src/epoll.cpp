@@ -157,7 +157,7 @@ void EpollEngine::eventLoop()
     while (!g_Stop)
     {
         std::vector<Client*> disconnected_clients;
-        int epoll_ret = epoll_wait (_epoll_fd, events, max_epoll_clients, -1);
+        int epoll_ret = epoll_wait(_epoll_fd, events, max_epoll_clients, -1);
 
         //logd5("epoll_ret: ", epoll_ret);
 
@@ -168,7 +168,7 @@ void EpollEngine::eventLoop()
             {
                 break;
             }
-            throw std::runtime_error(std::string("poll: ") + strerror(errno));
+            throw std::runtime_error(std::string("epoll: ") + strerror(errno));
         }
   
         for (int i = 0; i < epoll_ret; ++i)

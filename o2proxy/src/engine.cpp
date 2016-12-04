@@ -15,33 +15,42 @@
 #include "utils.hpp"
 #include "engine.hpp"
 #include "logger.hpp"
+#include "config.hpp"
 
 static const uint32_t kListenQueueSize = 1024;
 
+namespace
+{
+    void insert_resolved_ips(const std::string &host, std::vector<uint32_t> ips)
+    {
+        struct hostent* hp = gethostbyname(host.c_str());
+        if (NULL == hp)
+            throw std::runtime_error("resolve localhost error: " + std::string(strerror(errno)));
+
+        char** pAddr = hp->h_addr_list;
+        while (*pAddr)
+        {
+            unsigned char *ipf = reinterpret_cast<unsigned char*>(*pAddr);
+            uint32_t cur_interface_ip = 0;
+            uint8_t *local_ip_ptr = reinterpret_cast<uint8_t*>(&cur_interface_ip);
+            local_ip_ptr[0] = ipf[0];
+            local_ip_ptr[1] = ipf[1];
+            local_ip_ptr[2] = ipf[2];
+            local_ip_ptr[3] = ipf[3];
+
+            logi("localhost resolved: {0}, as_uint: {1}", utils::int2ipv4(cur_interface_ip), cur_interface_ip);
+
+            ++pAddr;
+            ips.push_back(cur_interface_ip);
+        }
+
+    }
+}
+
 Engine::Engine(int port)
 {
-    struct hostent* hp = gethostbyname("localhost");
-    if (NULL == hp)
-        throw std::runtime_error("resolve localhost error: " + std::string(strerror(errno)));
-
-    char** pAddr = hp->h_addr_list;
-    while (*pAddr)
-    {
-        unsigned char *ipf = reinterpret_cast<unsigned char*>(*pAddr);
-        uint32_t cur_interface_ip = 0;
-        uint8_t *rimap_local_ip_ptr = reinterpret_cast<uint8_t*>(&cur_interface_ip);
-        rimap_local_ip_ptr[0] = ipf[0];
-        rimap_local_ip_ptr[1] = ipf[1];
-        rimap_local_ip_ptr[2] = ipf[2];
-        rimap_local_ip_ptr[3] = ipf[3];
-
-        logi("localhost resolved: {0}, as_uint: {1}", utils::int2ipv4(cur_interface_ip), cur_interface_ip);
-
-        ++pAddr;
-        m_LocalIPs.push_back(cur_interface_ip);
-    }
-
-    m_LocalIPs.push_back(1949031455);   // 31.220.43.116
+    insert_resolved_ips("localhost", m_LocalIPs);
+    insert_resolved_ips(Config::get()->_local_address, m_LocalIPs);
 
     m_Listener = listenSocket(port, kListenQueueSize);
     if (m_Listener <= 0)
@@ -72,11 +81,11 @@ bool Engine::isMyHost(const std::string &host) const
     {
         unsigned char *ipf = reinterpret_cast<unsigned char*>(*pAddr);
         uint32_t cur_interface_ip = 0;
-        uint8_t *rimap_local_ip_ptr = reinterpret_cast<uint8_t*>(&cur_interface_ip);
-        rimap_local_ip_ptr[0] = ipf[0];
-        rimap_local_ip_ptr[1] = ipf[1];
-        rimap_local_ip_ptr[2] = ipf[2];
-        rimap_local_ip_ptr[3] = ipf[3];
+        uint8_t *local_ip_ptr = reinterpret_cast<uint8_t*>(&cur_interface_ip);
+        local_ip_ptr[0] = ipf[0];
+        local_ip_ptr[1] = ipf[1];
+        local_ip_ptr[2] = ipf[2];
+        local_ip_ptr[3] = ipf[3];
 
         auto it = std::find(m_LocalIPs.begin(), m_LocalIPs.end(), cur_interface_ip);
         if (it != m_LocalIPs.end())
@@ -120,9 +129,12 @@ int Engine::listenSocket(uint32_t port, uint32_t listen_queue_size)
         return -1;
     }
 
-    listen(sd, listen_queue_size);
+    if (listen(sd, listen_queue_size) != 0)
+    {
+        return -1;
+    }
 
-    logi("listen to: ", port);
+    logi("listen to: {0}, sd: {1}", port, sd);
     return sd;
 }
 
