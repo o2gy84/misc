@@ -81,7 +81,8 @@ void Config::read(const std::string &path)
     std::ifstream ifs(path.c_str());
     if (!ifs.good())
     {
-        throw std::runtime_error("cannot open config file \"" + path + "\"");
+        logw("cannot open config file \"" + path + "\"");
+        return;
     }
 
     std::string config((std::istreambuf_iterator<char>(ifs)),
