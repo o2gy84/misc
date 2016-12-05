@@ -219,9 +219,16 @@ void ProxyClient::onRead(const std::string &str)
             _partner = new ProxyClient(proxy_sd, _ev);
              bind(this, _partner);
 
-            _ev->addToEventLoop(_partner, engine::event_t::EV_WRITE);
-            _req.clear();
+            if (false == _ev->addToEventLoop(_partner, engine::event_t::EV_WRITE))
+            {
+                loge("error add to event loop on connect: ", _req.dump());
 
+                // shutdown with RDWR allow epoll to trigger event and delete this client
+                shutdown(_sd, SHUT_RDWR);
+                return;
+            }
+
+            _req.clear();
             _partner->nextState(ProxyClient::state::WANT_CONNECT);
             return;
         }
@@ -250,9 +257,16 @@ void ProxyClient::onRead(const std::string &str)
              _partner = new ProxyClient(proxy_sd, _ev);
              bind(this, _partner);
            
-            _ev->addToEventLoop(_partner, engine::event_t::EV_WRITE);
-            _partner->nextState(ProxyClient::state::WANT_WRITE_TO_TARGET);
+            if (false == _ev->addToEventLoop(_partner, engine::event_t::EV_WRITE))
+            {
+                loge("error add to event loop on method: {0}. requset dump: {1}", _req.headers()._method, _req.dump());
 
+                // shutdown with RDWR allow epoll to trigger event and delete this client
+                shutdown(_sd, SHUT_RDWR);
+                return;
+            }
+
+            _partner->nextState(ProxyClient::state::WANT_WRITE_TO_TARGET);
             _stream.clear();
             _stream.append(_req.toString());
             _req.clear();

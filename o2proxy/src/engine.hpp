@@ -38,7 +38,7 @@ public:
     ~Engine();
 
     virtual void run() =0;
-    virtual void addToEventLoop(Client *c, engine::event_t events) =0;
+    virtual bool addToEventLoop(Client *c, engine::event_t events) =0;
     virtual void changeEvents(Client *c, engine::event_t events) =0;
 
     bool isMyHost(const std::string &host) const;

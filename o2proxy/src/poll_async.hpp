@@ -70,7 +70,7 @@ class AsyncPollEngine: public Engine
     public:
         explicit AsyncPollEngine(int port): Engine(port) {}
         virtual void run() override;
-        virtual void addToEventLoop(Client *c, engine::event_t events) override {};
-        virtual void changeEvents(Client *c, engine::event_t events) override {};
+        virtual bool addToEventLoop(Client *c, engine::event_t events) override { return false; }
+        virtual void changeEvents(Client *c, engine::event_t events) override {}
 
 };

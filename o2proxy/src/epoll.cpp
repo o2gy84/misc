@@ -71,7 +71,7 @@ static void accept_action(int epfd, int listener, Engine *ev)
 
     if (0 != epoll_ctl(epfd, EPOLL_CTL_ADD, cli_sd, &cli_ev))
     {
-        loge("error add to epoll: ", strerror(errno));
+        loge("error add sd to epoll: ", strerror(errno));
     }
     else
     {
@@ -110,7 +110,7 @@ void EpollEngine::changeEvents(Client *c, engine::event_t events)
     return;
 }
 
-void EpollEngine::addToEventLoop(Client *c, engine::event_t events)
+bool EpollEngine::addToEventLoop(Client *c, engine::event_t events)
 {
     struct epoll_event cli_ev;
     memset(&cli_ev, 0, sizeof(struct epoll_event));
@@ -129,12 +129,12 @@ void EpollEngine::addToEventLoop(Client *c, engine::event_t events)
 
     if (0 != epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, c->_sd, &cli_ev))
     {
-        loge("error add to epoll on sd: ", c->_sd);
+        loge("add event on sd error [sd: {0}, e: {1}]", c->_sd, strerror(errno));
+        return false;
     }
-    else
-    {
-        logd3("added to event loop [sd: {0}, ptr: {1}]", c->_sd, (void*)cli_ev.data.ptr);
-    }
+
+    logd3("added to event loop [sd: {0}, ptr: {1}]", c->_sd, (void*)cli_ev.data.ptr);
+    return true;
 }
 
 void EpollEngine::eventLoop()
