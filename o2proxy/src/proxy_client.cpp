@@ -14,6 +14,9 @@
 #include "logger.hpp"
 
 
+extern std::string g_Version;
+
+
 namespace 
 {
     struct sockaddr_in resolve(const char* host, int port)
@@ -201,8 +204,12 @@ void ProxyClient::onRead(const std::string &str)
         {
              _partner = new ProxyClient(-1, _ev);
              bind(this, _partner);
+
+            std::string message = "o2proxy ready (ver. " + g_Version + ")";
  
-            _partner->_stream.append("HTTP/1.1 200 OK\r\nContent-Length: 13\r\n\r\no2proxy ready");
+            _partner->_stream.append("HTTP/1.1 200 OK\r\nContent-Length: ");
+            _partner->_stream.append(std::to_string(message.size()));
+            _partner->_stream.append("\r\n\r\n" + message);
             nextState(ProxyClient::state::WANT_WRITE_TO_CLI);
             _ev->changeEvents(this, engine::event_t::EV_WRITE);
             _req.clear();
