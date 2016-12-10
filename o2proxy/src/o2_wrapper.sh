@@ -18,7 +18,7 @@ function is_running()
 
 while true; do
 
-    is_running $O2_PROXY
+    is_running $BIN
     result=$?
     if [ $result -eq "0" ]
     then
