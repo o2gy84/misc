@@ -4,7 +4,7 @@
 #include "logger.hpp"
 #include "config.hpp"
 
-static const std::string g_Version = "0.0.1";
+static const std::string g_Version = "0.0.2";
 
 int main(int argc, char *argv[])
 {
