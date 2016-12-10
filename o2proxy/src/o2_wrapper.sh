@@ -9,7 +9,7 @@ function is_running()
     # returns 0, if process is not run
 
     gr=`pgrep -f $1`
-    if [ -z $gr ]
+    if [ -z "$gr" ]
     then
         return 0
     fi
