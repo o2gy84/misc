@@ -38,13 +38,18 @@ void sig_handler(int signum)
 }
 
 
-static void accept_action(int epfd, int listener, Engine *ev)
+static bool accept_action(int epfd, int listener, Engine *ev)
 {
     struct sockaddr_in client;
     memset(&client, 0, sizeof(client));
     socklen_t cli_len = sizeof(client);
 
     int cli_sd = accept(listener, (struct sockaddr*)&client, &cli_len);
+    if (cli_sd == -1)
+    {
+        loge("accept [sd: {0}, e: {1}]", listener, strerror(errno));
+        return false;
+    }
 
     // TODO: set some options?
     //int yes = 1;
@@ -71,12 +76,12 @@ static void accept_action(int epfd, int listener, Engine *ev)
 
     if (0 != epoll_ctl(epfd, EPOLL_CTL_ADD, cli_sd, &cli_ev))
     {
-        loge("error add sd to epoll: ", strerror(errno));
+        loge("error add sd to epoll [sd: {0}, e: {1}]", cli_sd, strerror(errno));
+        return false;
     }
-    else
-    {
-        logd2("new client: {0}, ptr: {1}", cli_sd, (void*)cli_ev.data.ptr);
-    }
+
+    logd2("new client: {0}, ptr: {1}", cli_sd, (void*)cli_ev.data.ptr);
+    return true;
 }
 
 void EpollEngine::changeEvents(Client *c, engine::event_t events)
@@ -178,7 +183,12 @@ void EpollEngine::eventLoop()
 
             if (events[i].data.fd == listener())
             {
-                accept_action(_epoll_fd, listener(), this);
+                if (false == accept_action(_epoll_fd, listener(), this))
+                {
+                    loge("accept failed [i: {0}, epoll_ret: {1}, epoll_fd: {2}, listen_fd: {3}]", i, epoll_ret, _epoll_fd, listener());
+                    loge("FATAL. accept: ", strerror(errno));
+                    exit(-1);
+                }
                 continue;
             }
 
@@ -186,7 +196,7 @@ void EpollEngine::eventLoop()
             {
                 // e.g. previous write() was in a already closed sd
                 Client *c = static_cast<Client*>(events[i].data.ptr);
-                logw("hup on sd: ", c->_sd);
+                logd1("hup on sd: ", c->_sd);
 
                 disconnected_clients.push_back(c);
             }

@@ -36,6 +36,7 @@ public:
     };
 
     friend void bind(ProxyClient *to_browser, ProxyClient *to_target);
+    friend void unbind(ProxyClient *to_browser, ProxyClient *to_target);
 
 public:
     ProxyClient(int sd, Engine *ev);

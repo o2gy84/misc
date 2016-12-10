@@ -112,16 +112,25 @@ std::string state2string(ProxyClient::state state)
     throw std::runtime_error("ProxyClient: unknown state");
 }
 
+// friend
 void bind(ProxyClient *to_browser, ProxyClient *to_target)
 {
     to_browser->_partner = to_target;
     to_target->_partner = to_browser;
 }
 
+// friend
+void unbind(ProxyClient *to_browser, ProxyClient *to_target)
+{
+    to_browser->_partner = nullptr;
+    to_target->_partner = nullptr;
+}
+
+
 ProxyClient::ProxyClient(int sd, Engine *ev): Client(sd), _ev(ev)
 {
     _state = state::INIT_STATE;
-    _partner = NULL;
+    _partner = nullptr;
 }
 
 ProxyClient::~ProxyClient()
@@ -285,7 +294,7 @@ void ProxyClient::onRead(const std::string &str)
     if (_state == state::WANT_READ_FROM_TARGET)
     {
         _stream.append(str);
-        if (_partner == NULL)
+        if (_partner == nullptr)
         {
             loge("PARTNER1 IS NULL !");
             return;
@@ -302,7 +311,7 @@ void ProxyClient::onRead(const std::string &str)
     if (_state == state::WANT_READ_FROM_CLI)
     {
         _stream.append(str);
-        if (_partner == NULL)
+        if (_partner == nullptr)
         {
             loge("PARTNER2 IS NULL !");
             return;
@@ -327,7 +336,7 @@ void ProxyClient::onWrite()
 
     Client *cs = static_cast<Client*>(_partner);
     //logd5("partner: ", (void*)_partner);
-    if (cs == NULL)
+    if (cs == nullptr)
     {
         loge("PARTNER IS NULL ON WRITE");
         _ev->changeEvents(this, engine::event_t::EV_NONE);
@@ -388,7 +397,7 @@ void ProxyClient::onWrite()
 
 void ProxyClient::onDead()
 {
-    if (_partner == NULL)
+    if (_partner == nullptr)
     {
         return;
     }
@@ -401,4 +410,5 @@ void ProxyClient::onDead()
     {
         shutdown(_partner->sd(), SHUT_RDWR);
     }
+    unbind(this, _partner);
 }
