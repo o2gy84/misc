@@ -11,11 +11,18 @@ int main(int argc, char *argv[])
     logi("o2proxy version: ", g_Version);
     try
     {
-        Options opt(argc, argv);
-        Logger::get().logLevel(opt._log_level);
+        Options opt;
+        opt.add("help", "h", "print help and exit", false);
+        opt.add("port", "p", "port to listen to (1025..65536)", 7788);
+        opt.add("loglevel", "l", "loglevel (1..5)", 0);
+        opt.add("config", "c", "path to config", "");
+        opt.add("test", "t", "vector test", std::vector<std::string>());
+        opt.parse(argc, argv);
 
+        Logger::get().logLevel(opt.get<int>("loglevel"));
         opt.dump();
-        Config::get()->load(opt._config);
+
+        Config::get()->load(opt.get<std::string>("config"));
 
         Server s(opt);
         s.run();

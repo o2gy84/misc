@@ -5,7 +5,7 @@ from waflib.Build import BuildContext
 
 
 APPNAME = 'o2proxy'
-VERSION = '0.1.0'
+VERSION = '0.0.2'
 
 top = '.'
 out = 'BUILD'
@@ -23,7 +23,7 @@ def build(ctx):
             target       = APPNAME,
             use          = 'myshlib',
             source       = ['main.cpp', 'options.cpp', 'config.cpp', 'utils.cpp', 'server.cpp', 'engine.cpp',
-                            'select.cpp', 'poll.cpp', 'poll_async.cpp', 'epoll.cpp',
+                            'select.cpp', 'poll.cpp', 'poll_async.cpp', 'epoll.cpp', 'settings.cpp',
                             'http.cpp', 'client.cpp', 'proxy_client.cpp', 'logger.cpp'
                             ],
             includes     = ['.'],

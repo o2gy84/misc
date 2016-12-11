@@ -43,10 +43,13 @@ namespace
 Server::Server(const Options &opt)
 {
     int port = Config::get()->_port;
-    if (opt._port)
+
+    // TODO: fix always use this param from default options
+    int opt_port = opt.get<int>("port");
+    if (opt_port)
     {
         // opt overrides
-        port = opt._port;
+        port = opt_port;
     }
 
     m_Engine = get_engine(Config::get()->_engine, port);
