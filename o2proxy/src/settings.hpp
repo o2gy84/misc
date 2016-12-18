@@ -23,14 +23,8 @@ public:
 
     type_t type() const { return m_Type; }
 
-    void storeBool(bool v);
-    void storeInt(int v);
-    void storeString(const std::string &v);
-
-    // TODO: checks for type!
-    bool getBool() const { return *(m_Ptr.v_bool); }
-    int getInt() const { return *(m_Ptr.v_int); }
-    std::string getString() const { return *(m_Ptr.v_string); }
+    template <typename T> void store(T v);
+    template <typename T> T get() const;
 
     friend std::ostream& operator<<(std::ostream& os, const AnyItem& item);
 
@@ -55,22 +49,11 @@ class SettingItem
 public:
     SettingItem() {}
 
-    SettingItem(const std::string &lk, const std::string &k, const std::string &desc, bool v) :
+    template<typename T>
+    SettingItem(const std::string &lk, const std::string &k, const std::string &desc, T &&v) :
         _long_key(lk), _key(k), _description(desc)
     {
-        _value.storeBool(v);
-    }
-
-    SettingItem(const std::string &lk, const std::string &k, const std::string &desc, int v) :
-        _long_key(lk), _key(k), _description(desc)
-    {
-        _value.storeInt(v);
-    }
-
-    SettingItem(const std::string &lk, const std::string &k, const std::string &desc, const std::string &v) :
-        _long_key(lk), _key(k), _description(desc)
-    {
-        _value.storeString(v);
+        _value.store(std::forward<T>(v));
     }
 
     std::string key() const { return _key; }

@@ -8,35 +8,8 @@
 #include "logger.hpp"
 
 
-template <>
-void Options::add<bool>(const std::string &lk, const std::string &k, const std::string &desc, bool default_value)
-{
-    m_Items[k] = SettingItem(lk, k, desc, default_value);
-    m_LongKeys.insert(lk);
-}
-
-template <>
-void Options::add<int>(const std::string &lk, const std::string &k, const std::string &desc, int default_value)
-{
-    m_Items[k] = SettingItem(lk, k, desc, default_value);
-    m_LongKeys.insert(lk);
-}
-
-template <>
-void Options::add<const char*>(const std::string &lk, const std::string &k, const std::string &desc, const char *default_value)
-{
-    m_Items[k] = SettingItem(lk, k, desc, std::string(default_value));
-    m_LongKeys.insert(lk);
-}
-
-template <>
-void Options::add<std::vector<std::string>>(const std::string &k, const std::string &lk, const std::string &desc,
-    std::vector<std::string> default_value)
-{
-    //std::cerr << "specialization of strings vector...\n";
-}
-
-std::map<std::string, SettingItem>::const_iterator Options::iterator(const std::string &k) const throw (std::exception)
+std::map<std::string, SettingItem>::const_iterator
+Options::find_option_by_key(const std::string &k) const throw (std::exception)
 {
     if (k.empty())
     {
@@ -50,27 +23,6 @@ std::map<std::string, SettingItem>::const_iterator Options::iterator(const std::
     }
 
     return it;
-}
-
-template <>
-bool Options::get<bool>(const std::string &k) const
-{
-    auto it = iterator(k);
-    return it->second.value().getBool();
-}
-
-template <>
-int Options::get<int>(const std::string &k) const
-{
-    auto it = iterator(k);
-    return it->second.value().getInt();
-}
-
-template <>
-std::string Options::get<std::string>(const std::string &k) const
-{
-    auto it = iterator(k);
-    return it->second.value().getString();
 }
 
 std::string Options::usage(const std::string &progname) const
