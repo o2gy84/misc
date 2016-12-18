@@ -37,13 +37,19 @@ int braced_number(const std::string &s)
 Logger::Logger()
 {
     _log_level = 0;
+    _syslog = false;
 }
 
-void Logger::logLevel(uint16_t level)
+void Logger::setOptionLogLevel(uint16_t level)
 {
     if (level < 0) level = 0;
     if (level > 5) level = 5;
     _log_level = level;
+}
+
+void Logger::setOptionSyslog(bool syslog)
+{
+    _syslog = syslog;
 }
 
 Logger& Logger::get()

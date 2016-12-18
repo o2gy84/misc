@@ -16,9 +16,13 @@ int main(int argc, char *argv[])
         opt.add("port", "p", "port to listen to (1025..65536)", 7788);
         opt.add("loglevel", "l", "loglevel (1..5)", 0);
         opt.add("config", "c", "path to config", "");
+        opt.add("syslog", "", "write logs into syslog", false);
+
         opt.parse(argc, argv);
 
-        Logger::get().logLevel(opt.get<int>("loglevel"));
+        Logger::get().setOptionLogLevel(opt.get<int>("loglevel"));
+        Logger::get().setOptionSyslog(opt.get<bool>("syslog"));
+
         opt.dump();
 
         Config::get()->load(opt.get<std::string>("config"));

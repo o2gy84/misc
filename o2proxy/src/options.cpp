@@ -8,45 +8,85 @@
 #include "logger.hpp"
 
 
-std::map<std::string, SettingItem>::const_iterator
-Options::find_option_by_key(const std::string &k) const throw (std::exception)
+const SettingItem& Options::find_option_by_long_key(const std::string &lk) const throw (std::exception)
+{
+    if (lk.empty())
+    {
+        throw std::runtime_error("request for empty option");
+    }
+
+    auto it = m_Items.find(lk);
+    if (it == m_Items.end())
+    {
+        throw std::runtime_error("no such option: " + lk);
+    }
+
+    return it->second;
+}
+
+const SettingItem& Options::find_option_by_short_key(const std::string &k) const throw (std::exception)
 {
     if (k.empty())
     {
         throw std::runtime_error("request for empty option");
     }
 
-    auto it = m_Items.find(k.substr(0, 1));
-    if (it == m_Items.end())
+    for (auto it = m_Items.begin(); it != m_Items.end(); ++it)
     {
-        throw std::runtime_error("no such option: " + k);
+        const SettingItem &item = it->second;
+        if (item.key() == k)
+        {
+            return item;
+        }
     }
 
-    return it;
+    throw std::runtime_error("no such option: " + k);
 }
+
 
 std::string Options::usage(const std::string &progname) const
 {
+    // TODO: for more beautifullity, first print short options,
+    //       second - long options
+
     std::stringstream ss;
     ss << "Usage: " << progname;
 
     for (const auto &i : m_Items)
     {
-        ss << " -" << i.second.key();
+        const SettingItem &item = i.second;
+        if (item.key().empty())
+        {
+            ss << " --" << item.lkey();
+        }
+        else
+        {
+            ss << " -" << item.key();
+        }
     }
     ss << std::endl << std::endl;
 
     for (const auto &i : m_Items)
     {
-        std::string tmp = "-" + i.second.key() + " [ --" + i.second.lkey() + " ] ";
-        ss << "\t" << std::setw(24) << std::left << tmp
-           << ": " << i.second.desc() << std::endl;
+        const SettingItem &item = i.second;
+        std::string desc;
+        if (item.key().empty())
+        {
+            desc = "--" + item.lkey();
+        }
+        else
+        {
+            desc = "-" + item.key() + " [ --" + item.lkey() + " ] ";
+        }
+
+        ss << "\t" << std::setw(24) << std::left << desc
+           << ": " << item.desc() << std::endl;
     }
 
     return ss.str();
 }
 
-void Options::dump() const noexcept
+void Options::dump() const
 {
     if (get<int>("loglevel") == 0)
         return;
@@ -86,20 +126,20 @@ void Options::parse(int count, const char *const *args)
         }
 
         std::string key = tmp.substr(hyphen_counter, std::string::npos);
-        if (key.size() > 1 && m_LongKeys.find(key) == m_LongKeys.end())
-        {
-            loge("wrong key: ", args[counter]);
-            logi(usage(args[0]));
-            exit(-1);
-        }
 
-        if (hyphen_counter == 1)
+        if (hyphen_counter == 1)    // short key
         {
-            key = tmp[1];
-        }
-        else
-        {
-            key = tmp[2];
+            try
+            {
+                const SettingItem &item = find_option_by_short_key(key);
+                key = item.lkey();
+            }
+            catch (...)
+            {
+                loge("wrong key: ", args[counter]);
+                logi(usage(args[0]));
+                exit(-1);
+            }
         }
 
         auto it = m_Items.find(key);

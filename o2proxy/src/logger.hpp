@@ -37,7 +37,8 @@ public:
         std::cout << "[" << prefix << "] " << key << val << std::endl;
     }
 
-    void logLevel(uint16_t level);
+    void setOptionLogLevel(uint16_t level);
+    void setOptionSyslog(bool syslog);
 
 private:
     Logger();
@@ -45,6 +46,7 @@ private:
     Logger& operator=(const Logger &);
 private:
     uint16_t _log_level;
+    bool _syslog;
 };
 
 
