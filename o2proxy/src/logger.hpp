@@ -6,7 +6,9 @@
 #include <utility>
 #include <tuple>
 #include <string>
+
 #include <assert.h>
+#include <syslog.h>
 
 
 /*
@@ -23,22 +25,25 @@ class Logger
 public:
     static Logger& get();
 
-    // TODO: file, stream, syslog, loglevel :)
-    template <typename T>
-    void log(char prefix, int log_level, T val) const
+    // TODO: log into file
+    void log(const char *text) const
     {
-        if (_log_level < log_level) return;
-        std::cout << "[" << prefix << "] " << val << std::endl;
-    }
-    template <typename K, typename V>
-    void log(char prefix, int log_level, K &key, V &val) const
-    {
-        if (_log_level < log_level) return;
-        std::cout << "[" << prefix << "] " << key << val << std::endl;
+        if (_syslog)
+        {
+            syslog(LOG_INFO, "%s", text);
+        }
+        else
+        {
+            std::cout << text;
+        }
     }
 
+    // OPTIONS
     void setOptionLogLevel(uint16_t level);
-    void setOptionSyslog(bool syslog);
+    void setOptionSyslog(const char *progname, bool syslog);
+
+    // GETTERS
+    uint16_t loglevel() const { return _log_level; }
 
 private:
     Logger();
@@ -73,24 +78,41 @@ template<typename T>
 void logi_impl(char prefix, int log_level, T &text)
 {
     const Logger &l = Logger::get();
-    l.log(prefix, log_level, text);
+    if (l.loglevel() < log_level) return;
+
+    std::stringbuf stringbuf;
+    std::ostream os(&stringbuf);
+    os << "[" << prefix << "] " << text << std::endl;
+
+    l.log(stringbuf.str().c_str());
 }
 
 // logging in "key: value" style
 template<typename T>
-void logi_impl2(char prefix, int log_level, const std::string &key, T val)
+void logi_impl2(char prefix, int log_level, const std::string &key, T&& val)
 {
-    Logger::get().log(prefix, log_level, key, val);
+    const Logger &l = Logger::get();
+    if (l.loglevel() < log_level) return;
+
+    std::stringbuf stringbuf;
+    std::ostream os(&stringbuf);
+    os << "[" << prefix << "] " << key << val << std::endl;
+
+    l.log(stringbuf.str().c_str());
 }
 
 // logging in style like: string.format("key: {0}, value: {1}", key, val)
 template <typename ...Args>
 void log_impl3(char prefix, int log_level, const std::string &format, Args&&... args)
 {
+    const Logger &l = Logger::get();
+    if (l.loglevel() < log_level) return;
+
     std::tuple<Args...> list(args...);
 
     std::stringbuf stringbuf;
     std::ostream os(&stringbuf);
+    os << "[" << prefix << "] ";
 
     std::string::size_type last_pos = 0;
     std::string::size_type open_brace = format.find('{', 0);
@@ -129,8 +151,8 @@ void log_impl3(char prefix, int log_level, const std::string &format, Args&&... 
         last_pos = close_brace + 1;
         open_brace = format.find('{', close_brace + 1);
     }
-    os << std::string(format.begin() + last_pos, format.end());
-    Logger::get().log(prefix, log_level, stringbuf.str());
+    os << std::string(format.begin() + last_pos, format.end()) << std::endl;
+    l.log(stringbuf.str().c_str());
 }
 
 

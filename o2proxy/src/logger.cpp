@@ -47,9 +47,17 @@ void Logger::setOptionLogLevel(uint16_t level)
     _log_level = level;
 }
 
-void Logger::setOptionSyslog(bool syslog)
+void Logger::setOptionSyslog(const char *progname, bool syslog)
 {
     _syslog = syslog;
+
+    if (_syslog)
+    {
+        int options = LOG_PID;
+        // TODO: change facility
+        int facility = LOG_LOCAL0;
+        openlog(progname, options, facility);
+    }
 }
 
 Logger& Logger::get()

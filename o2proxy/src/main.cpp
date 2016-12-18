@@ -4,11 +4,10 @@
 #include "logger.hpp"
 #include "config.hpp"
 
-std::string g_Version = "0.0.2";
+std::string g_Version = "0.1.0";
 
 int main(int argc, char *argv[])
 {
-    logi("o2proxy version: ", g_Version);
     try
     {
         Options opt;
@@ -21,7 +20,9 @@ int main(int argc, char *argv[])
         opt.parse(argc, argv);
 
         Logger::get().setOptionLogLevel(opt.get<int>("loglevel"));
-        Logger::get().setOptionSyslog(opt.get<bool>("syslog"));
+        Logger::get().setOptionSyslog(argv[0], opt.get<bool>("syslog"));
+
+        logi("o2proxy version: ", g_Version);
 
         opt.dump();
 
