@@ -1,9 +1,6 @@
 #pragma once
 
-#include <map>
-#include <set>
-
-#include "settings.hpp"
+#include "settings_storage.hpp"
 
 /*
     Programm option class.
@@ -22,27 +19,20 @@ public:
         {
             throw std::runtime_error("key is empty: " + k);
         }
-        if (m_Items.find(lk) != m_Items.end())
-        {
-            throw std::runtime_error("options key already registered: " + lk);
-        }
-
-        m_Items[lk] = SettingItem(lk, k, desc, std::forward<T>(default_value));
+        m_Storage.addValueByKey(lk, k, desc, default_value);
     }
 
     template <typename T>
     T get(const std::string &key) const
     {
-        const SettingItem &item = find_option_by_long_key(key);
+        const SettingItem &item = m_Storage.find_option_by_long_key(key);
         return item.value().get<T>();
     }
 
 private:
-    const SettingItem& find_option_by_long_key(const std::string &lk) const throw (std::exception);
-    const SettingItem& find_option_by_short_key(const std::string &k) const throw (std::exception);
-
     std::string usage(const std::string &program) const;
+    int parseFromProgrammOptions(SettingItem *item, int cur_counter, int total_opts, const char *const *args);
 
 private:
-    std::map<std::string, SettingItem> m_Items; // long key and Item
+    SettingsStorage m_Storage;
 };

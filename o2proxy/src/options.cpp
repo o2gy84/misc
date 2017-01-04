@@ -8,42 +8,6 @@
 #include "logger.hpp"
 
 
-const SettingItem& Options::find_option_by_long_key(const std::string &lk) const throw (std::exception)
-{
-    if (lk.empty())
-    {
-        throw std::runtime_error("request for empty option");
-    }
-
-    auto it = m_Items.find(lk);
-    if (it == m_Items.end())
-    {
-        throw std::runtime_error("no such option: " + lk);
-    }
-
-    return it->second;
-}
-
-const SettingItem& Options::find_option_by_short_key(const std::string &k) const throw (std::exception)
-{
-    if (k.empty())
-    {
-        throw std::runtime_error("request for empty option");
-    }
-
-    for (auto it = m_Items.begin(); it != m_Items.end(); ++it)
-    {
-        const SettingItem &item = it->second;
-        if (item.key() == k)
-        {
-            return item;
-        }
-    }
-
-    throw std::runtime_error("no such option: " + k);
-}
-
-
 std::string Options::usage(const std::string &progname) const
 {
     // TODO: for more beautifullity, first print short options,
@@ -52,7 +16,7 @@ std::string Options::usage(const std::string &progname) const
     std::stringstream ss;
     ss << "Usage: " << progname;
 
-    for (const auto &i : m_Items)
+    for (const auto &i : m_Storage.items())
     {
         const SettingItem &item = i.second;
         if (item.key().empty())
@@ -66,7 +30,7 @@ std::string Options::usage(const std::string &progname) const
     }
     ss << std::endl << std::endl;
 
-    for (const auto &i : m_Items)
+    for (const auto &i : m_Storage.items())
     {
         const SettingItem &item = i.second;
         std::string desc;
@@ -95,7 +59,7 @@ void Options::dump() const
     std::ostream os(&str);
 
     os << "Options dump: " << std::endl;
-    for (const auto &i : m_Items)
+    for (const auto &i : m_Storage.items())
     {
         os << "\t" << std::setw(16) << std::left << i.second.lkey();
         os << ": " << i.second.value() << std::endl;
@@ -131,7 +95,7 @@ void Options::parse(int count, const char *const *args)
         {
             try
             {
-                const SettingItem &item = find_option_by_short_key(key);
+                const SettingItem &item = m_Storage.find_option_by_short_key(key);
                 key = item.lkey();
             }
             catch (...)
@@ -142,15 +106,21 @@ void Options::parse(int count, const char *const *args)
             }
         }
 
-        auto it = m_Items.find(key);
-        if (it == m_Items.end())
+        auto f = [this, &counter, count, args](SettingItem &item) mutable
+        {
+            counter = parseFromProgrammOptions(&item, counter, count, args);
+        };
+
+        try
+        {
+            m_Storage.setValueByKey(key, f);
+        }
+        catch (const std::exception &)
         {
             loge("wrong key: ", args[counter]);
             logi(usage(args[0]));
             exit(-1);
         }
-
-        counter = it->second.parseFromProgrammOptions(counter, count, args);
     }
 
     if (get<bool>("help"))
@@ -158,4 +128,42 @@ void Options::parse(int count, const char *const *args)
         logi(usage(args[0]));
         exit(0);
     }
+}
+
+int Options::parseFromProgrammOptions(SettingItem *item, int cur_counter, int total_opts, const char *const *args)
+{
+    if (item->value().type() == AnyItem::BOOL)
+    {
+        // positional option - just yes or no
+        item->value().store(true);
+        return cur_counter + 1;
+    }
+    else if (item->value().type() == AnyItem::INT)
+    {
+        // TODO: parse more complex
+        // examples: "-l 5", "-l=5", "-l5"
+        if (cur_counter + 1 >= total_opts)
+        {
+            throw std::runtime_error("bad options");
+        }
+
+        int v = std::stoi(args[cur_counter + 1]);
+        item->value().store(v);
+        return cur_counter + 2;
+    }
+    else if (item->value().type() == AnyItem::STRING)
+    {
+        // TODO: parse more complex
+        // examples: "-c /etc/config.conf", "-c = /etc/config.conf"
+        if (cur_counter + 1 >= total_opts)
+        {
+            throw std::runtime_error("bad options");
+        }
+
+        item->value().store(args[cur_counter + 1]);
+        return cur_counter + 2;
+    }
+
+    throw std::runtime_error("bad options");
+    return -1;
 }

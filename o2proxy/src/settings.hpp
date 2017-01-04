@@ -60,8 +60,7 @@ public:
     std::string lkey() const { return _long_key; }
     std::string desc() const { return _description; }
     const AnyItem& value() const { return _value; }
-
-    int parseFromProgrammOptions(int cur_counter, int total_opts, const char *const *args);
+    AnyItem& value() { return _value; }
 
 private:
     std::string _long_key;

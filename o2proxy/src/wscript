@@ -24,7 +24,7 @@ def build(ctx):
             use          = 'myshlib',
             source       = ['main.cpp', 'options.cpp', 'config.cpp', 'utils.cpp', 'server.cpp', 'engine.cpp',
                             'select.cpp', 'poll.cpp', 'poll_async.cpp', 'epoll.cpp', 'settings.cpp',
-                            'http.cpp', 'client.cpp', 'proxy_client.cpp', 'logger.cpp'
+                            'http.cpp', 'client.cpp', 'proxy_client.cpp', 'logger.cpp', 'settings_storage.cpp'
                             ],
             includes     = ['.'],
             defines     = ['DEBUG=1'],
