@@ -23,15 +23,19 @@ public:
     }
 
     template <typename T>
-    T get(const std::string &key) const
+    const T get(const std::string &key) const
     {
-        const SettingItem &item = m_Storage.find_option_by_long_key(key);
-        return item.value().get<T>();
+        std::pair<SettingItem &, bool> ret = m_Storage.find_option_by_long_key(key);
+        if (!ret.second)
+        {
+            throw std::runtime_error("no such options: " + key);
+        }
+        return ret.first.value().get<T>();
     }
 
 private:
     std::string usage(const std::string &program) const;
-    int parseFromProgrammOptions(SettingItem *item, int cur_counter, int total_opts, const char *const *args);
+    int parseFromProgrammOptions(SettingItem &item, int cur_counter, int total_opts, const char *const *args);
 
 private:
     SettingsStorage m_Storage;

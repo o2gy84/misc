@@ -1,19 +1,21 @@
 #include "settings_storage.hpp"
 
-const SettingItem& SettingsStorage::find_option_by_long_key(const std::string &lk) const throw (std::exception)
+std::pair<SettingItem&, bool> SettingsStorage::find_option_by_long_key(const std::string &lk) const noexcept
 {
+    SettingItem tmp;
     if (lk.empty())
     {
-        throw std::runtime_error("request for empty option");
+        return std::pair<SettingItem&, bool>(tmp, false);
     }
 
-    auto it = m_Items.find(lk);
+    std::map<std::string, SettingItem>::const_iterator it = m_Items.find(lk);
     if (it == m_Items.end())
     {
-        throw std::runtime_error("no such option: " + lk);
+        return std::pair<SettingItem&, bool>(tmp, false);
     }
 
-    return it->second;
+    SettingItem &item = const_cast<SettingItem&>(it->second);
+    return std::pair<SettingItem&, bool>(item, true);
 }
 
 const SettingItem& SettingsStorage::find_option_by_short_key(const std::string &k) const throw (std::exception)
@@ -34,4 +36,3 @@ const SettingItem& SettingsStorage::find_option_by_short_key(const std::string &
 
     throw std::runtime_error("no such option: " + k);
 }
-

@@ -106,21 +106,15 @@ void Options::parse(int count, const char *const *args)
             }
         }
 
-        auto f = [this, &counter, count, args](SettingItem &item) mutable
-        {
-            counter = parseFromProgrammOptions(&item, counter, count, args);
-        };
-
-        try
-        {
-            m_Storage.setValueByKey(key, f);
-        }
-        catch (const std::exception &)
+        std::pair<SettingItem &, bool> item = m_Storage.find_option_by_long_key(key);
+        if (!item.second)
         {
             loge("wrong key: ", args[counter]);
             logi(usage(args[0]));
             exit(-1);
         }
+
+        counter = parseFromProgrammOptions(item.first, counter, count, args);
     }
 
     if (get<bool>("help"))
@@ -130,15 +124,15 @@ void Options::parse(int count, const char *const *args)
     }
 }
 
-int Options::parseFromProgrammOptions(SettingItem *item, int cur_counter, int total_opts, const char *const *args)
+int Options::parseFromProgrammOptions(SettingItem &item, int cur_counter, int total_opts, const char *const *args)
 {
-    if (item->value().type() == AnyItem::BOOL)
+    if (item.value().type() == AnyItem::BOOL)
     {
         // positional option - just yes or no
-        item->value().store(true);
+        item.value().store(true);
         return cur_counter + 1;
     }
-    else if (item->value().type() == AnyItem::INT)
+    else if (item.value().type() == AnyItem::INT)
     {
         // TODO: parse more complex
         // examples: "-l 5", "-l=5", "-l5"
@@ -148,10 +142,10 @@ int Options::parseFromProgrammOptions(SettingItem *item, int cur_counter, int to
         }
 
         int v = std::stoi(args[cur_counter + 1]);
-        item->value().store(v);
+        item.value().store(v);
         return cur_counter + 2;
     }
-    else if (item->value().type() == AnyItem::STRING)
+    else if (item.value().type() == AnyItem::STRING)
     {
         // TODO: parse more complex
         // examples: "-c /etc/config.conf", "-c = /etc/config.conf"
@@ -160,7 +154,7 @@ int Options::parseFromProgrammOptions(SettingItem *item, int cur_counter, int to
             throw std::runtime_error("bad options");
         }
 
-        item->value().store(args[cur_counter + 1]);
+        item.value().store(args[cur_counter + 1]);
         return cur_counter + 2;
     }
 
