@@ -90,6 +90,11 @@ void Options::parse(int count, const char *const *args)
         }
 
         std::string key = tmp.substr(hyphen_counter, std::string::npos);
+        std::string::size_type eq_pos = key.find("=");
+        if (eq_pos != std::string::npos)
+        {
+            key = key.substr(0, eq_pos);
+        }
 
         if (hyphen_counter == 1)    // short key
         {
@@ -126,36 +131,49 @@ void Options::parse(int count, const char *const *args)
 
 int Options::parseFromProgrammOptions(SettingItem &item, int cur_counter, int total_opts, const char *const *args)
 {
+    int next_args_counter = cur_counter + 1;
+
     if (item.value().type() == AnyItem::BOOL)
     {
         // positional option - just yes or no
         item.value().store(true);
-        return cur_counter + 1;
+        return next_args_counter;
     }
-    else if (item.value().type() == AnyItem::INT)
+
+    std::string value;
+
+    std::string tmp(args[cur_counter]);
+    std::string::size_type eq_pos = tmp.find("=");
+    if (eq_pos != std::string::npos)
     {
-        // TODO: parse more complex
-        // examples: "-l 5", "-l=5", "-l5"
+        value = tmp.substr(eq_pos + 1, std::string::npos);
+        if (value.empty())
+        {
+            throw std::runtime_error("bad options");
+        }
+    }
+    else
+    {
+        // TODO: format without space? like " -l5 -I/usr/local/include"
         if (cur_counter + 1 >= total_opts)
         {
             throw std::runtime_error("bad options");
         }
 
-        int v = std::stoi(args[cur_counter + 1]);
+        value = std::string(args[cur_counter + 1]);
+        next_args_counter = cur_counter + 2;
+    }
+
+    if (item.value().type() == AnyItem::INT)
+    {
+        int v = std::stoi(value);
         item.value().store(v);
-        return cur_counter + 2;
+        return next_args_counter;
     }
     else if (item.value().type() == AnyItem::STRING)
     {
-        // TODO: parse more complex
-        // examples: "-c /etc/config.conf", "-c = /etc/config.conf"
-        if (cur_counter + 1 >= total_opts)
-        {
-            throw std::runtime_error("bad options");
-        }
-
-        item.value().store(args[cur_counter + 1]);
-        return cur_counter + 2;
+        item.value().store(value);
+        return next_args_counter;
     }
 
     throw std::runtime_error("bad options");
