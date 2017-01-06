@@ -55,6 +55,12 @@ Config* Config::impl()
     return _self;
 }
 
+void Config::destroy()
+{
+    delete _self;
+    _self = nullptr;
+}
+
 void Config::load(const std::string &path)
 {
     std::string real_path = path;

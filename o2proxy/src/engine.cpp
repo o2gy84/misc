@@ -5,6 +5,7 @@
 #include <unistd.h>     // close()
 #include <errno.h>
 #include <netdb.h>      // gethostbyname
+#include <signal.h>     // signal
 
 #include <stdexcept>
 #include <string>
@@ -18,6 +19,14 @@
 #include "config.hpp"
 
 static const uint32_t kListenQueueSize = 1024;
+
+std::atomic<bool> Engine::g_Stop(false);
+
+void sig_handler(int signum)
+{
+    Engine::g_Stop = true;
+    Config::impl()->destroy();
+}
 
 namespace
 {
@@ -54,6 +63,8 @@ namespace
 
 Engine::Engine(int port)
 {
+    signal(SIGINT, sig_handler);
+
     insert_resolved_ips("localhost", m_LocalIPs);
     insert_resolved_ips(Config::impl()->get<std::string>("local_address"), m_LocalIPs);
 

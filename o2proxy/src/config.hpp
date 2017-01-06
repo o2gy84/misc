@@ -29,6 +29,7 @@ public:
     static Config* impl();
     void load(const std::string &path);
     void dump() const;
+    void destroy();
     std::string usage() const;
 
 public:

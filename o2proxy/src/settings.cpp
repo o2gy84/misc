@@ -29,6 +29,11 @@ bool AnyItem::get_impl<bool>(bool *) const
 template <>
 void AnyItem::store_impl<bool>(bool v, bool *)
 {
+    if (m_Ptr.v_bool)
+    {
+        delete m_Ptr.v_bool;
+    }
+
     m_Ptr.v_bool = new bool(v);
     m_Type = BOOL;
 }
@@ -41,6 +46,11 @@ int AnyItem::get_impl<int>(int *) const
 template <>
 void AnyItem::store_impl<int>(int v, int *)
 {
+    if (m_Ptr.v_int)
+    {
+        delete m_Ptr.v_int;
+    }
+
     m_Ptr.v_int = new int(v);
     m_Type = INT;
 }
@@ -53,12 +63,22 @@ std::string AnyItem::get_impl<std::string>(std::string *) const
 template <>
 void AnyItem::store_impl<std::string>(std::string v, std::string *)
 {
+    if (m_Ptr.v_string)
+    {
+        delete m_Ptr.v_string;
+    }
+
     m_Ptr.v_string = new std::string(v);
     m_Type = STRING;
 }
 template <>
 void AnyItem::store_impl<const char*>(const char *v, const char**)
 {
+    if (m_Ptr.v_string)
+    {
+        delete m_Ptr.v_string;
+    }
+
     m_Ptr.v_string = new std::string(v);
     m_Type = STRING;
 }

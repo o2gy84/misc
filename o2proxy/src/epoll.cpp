@@ -2,7 +2,6 @@
 #include <sys/socket.h>     // socket()
 #include <netinet/in.h>     // htons(), INADDR_ANY
 #include <netinet/tcp.h>    // SOL_TCP
-#include <signal.h>
 
 #include <errno.h>
 #include <assert.h>
@@ -12,7 +11,6 @@
 #include <stdint.h>     // uint32_t
 #include <string.h>
 
-#include <atomic>
 #include <iostream>
 #include <set>
 #include <thread>
@@ -24,18 +22,6 @@
 #include "proxy_client.hpp"
 #include "logger.hpp"
 
-
-namespace
-{
-
-std::atomic<bool> g_Stop(false);
-
-void sig_handler(int signum)
-{
-    g_Stop = true;
-}
-
-}
 
 
 static bool accept_action(int epfd, int listener, Engine *ev)
@@ -159,7 +145,7 @@ void EpollEngine::eventLoop()
 
     struct epoll_event *events = (struct epoll_event*)malloc(max_epoll_clients * sizeof(struct epoll_event));
 
-    while (!g_Stop)
+    while (!Engine::g_Stop)
     {
         std::vector<Client*> disconnected_clients;
         int epoll_ret = epoll_wait(_epoll_fd, events, max_epoll_clients, -1);
@@ -169,7 +155,7 @@ void EpollEngine::eventLoop()
         if (epoll_ret == 0) continue;
         if (epoll_ret == -1)
         {
-            if (g_Stop)
+            if (Engine::g_Stop)
             {
                 break;
             }
@@ -279,6 +265,5 @@ void EpollEngine::eventLoop()
 
 void EpollEngine::run()
 {
-    signal(SIGINT, sig_handler);
     eventLoop();
 }

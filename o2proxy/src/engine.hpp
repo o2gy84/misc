@@ -4,6 +4,7 @@
 #include <vector>
 #include <functional>
 #include <memory>
+#include <atomic>
 
 #include "client.hpp"
 
@@ -33,6 +34,9 @@ namespace engine
 
 class Engine
 {
+public:
+    static std::atomic<bool> g_Stop;
+
 public:
     explicit Engine(int port);
     ~Engine();
