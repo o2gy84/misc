@@ -6,13 +6,26 @@
 
 std::string g_Version = "0.1.1";
 
+void init_config(const std::string &path, Config *conf)
+{
+    conf->add("port", "port to listen to", 7788);
+    conf->add("engine", "input/output engine: select, poll or epoll", "epoll");
+    conf->add("local_address", "local address", "");
+    //conf->add("abcd", "test", std::vector<int>());
+    //conf->add("abcde", "test2", std::vector<std::string>());
+
+    conf->load(path);
+    conf->dump();
+    logd5("", conf->usage());
+}
+
 int main(int argc, char *argv[])
 {
     try
     {
         Options opt;
         opt.add("help", "h", "print help and exit", false);
-        opt.add("port", "p", "port to listen to (1025..65536)", 7788);
+        opt.add("port", "p", "port to listen to (1025..65536)", 0);
         opt.add("loglevel", "l", "loglevel (1..5)", 0);
         opt.add("config", "c", "path to config", "");
         opt.add("syslog", "", "write logs into syslog", false);
@@ -26,7 +39,7 @@ int main(int argc, char *argv[])
 
         opt.dump();
 
-        Config::get()->load(opt.get<std::string>("config"));
+        init_config(opt.get<std::string>("config"), Config::impl());
 
         Server s(opt);
         s.run();

@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <fstream>
+#include <iomanip>
 
 #include "utils.hpp"
 #include "logger.hpp"
@@ -45,20 +46,13 @@ std::string engine2string(engine_t engine)
 
 Config* Config::_self = nullptr;
 
-Config* Config::get()
+Config* Config::impl()
 {
     if (_self == NULL)
     {
         _self = new Config();
-        _self->init();
     }
     return _self;
-}
-
-void Config::init()
-{
-    _port = 7788;
-    _engine = config::engine_t::EPOLL;
 }
 
 void Config::load(const std::string &path)
@@ -92,7 +86,6 @@ void Config::read(const std::string &path)
 }
 
 void Config::parse(const std::string &config)
-// TODO: make it compatible with libconfig: http://www.hyperrealm.com/libconfig/libconfig.html
 {
     std::vector<std::string> lines = utils::split(config, "\n");
     for (size_t i = 0; i < lines.size(); ++i)
@@ -106,17 +99,68 @@ void Config::parse(const std::string &config)
         std::string key = utils::trimmed(pair[0]);
         std::string value = utils::trimmed(pair[1]);
 
-        if (key == "local_address")
+        std::pair<SettingItem &, bool> item = m_Storage.find_option_by_long_key(key);
+        if (!item.second)
         {
-            _local_address = value;
+            logw("unused key in config: ", key);
+            continue;
         }
-        else if (key == "port")
+
+        parseFromConfig(item.first.value(), item.first.value().type(), value);
+    }
+}
+
+void Config::parseFromConfig(AnyItem &item, AnyItem::type_t type, const std::string &text)
+{
+    if (type == AnyItem::INT)
+    {
+        int v = std::stoi(text);
+        item.store(v);
+    }
+    else if (type == AnyItem::STRING)
+    {
+        item.store(text);
+    }
+    else if (type == AnyItem::VECTOR)
+    {
+        std::vector<std::string> tmp = utils::split(text, ",");
+        for (size_t i = 0; i < tmp.size(); ++i)
         {
-            _port = std::stoi(value);
-        }
-        else if (key == "engine")
-        {
-            _engine = config::string2engine(value);
+            tmp[i] = utils::trimmed(tmp[i]);
+            AnyItem any;
+            parseFromConfig(any, item.vectorType(), tmp[i]);
+            item.pushBack(any);
         }
     }
+}
+
+void Config::dump() const
+{
+    std::stringbuf str;
+    std::ostream os(&str);
+
+    os << "Config dump: " << std::endl;
+    for (const auto &i : m_Storage.items())
+    {
+        os << "\t" << std::setw(16) << std::left << i.second.lkey();
+        os << ": " << i.second.value() << std::endl;
+    }
+    logi(str.str());
+}
+
+std::string Config::usage() const
+{
+    std::stringstream ss;
+    ss << "Config options description: " << std::endl;
+
+    for (const auto &i : m_Storage.items())
+    {
+        const SettingItem &item = i.second;
+        std::string param = item.lkey();
+
+        ss << "\t" << std::setw(24) << std::left << param
+           << ": " << item.desc() << std::endl;
+    }
+
+    return ss.str();
 }

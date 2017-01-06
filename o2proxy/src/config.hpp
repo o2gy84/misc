@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include "settings_storage.hpp"
+
 namespace config
 {
 
@@ -24,17 +26,32 @@ std::string engine2string(engine_t engine);
 class Config
 {
 public:
-    static Config* get();
+    static Config* impl();
     void load(const std::string &path);
+    void dump() const;
+    std::string usage() const;
 
 public:
-    uint16_t _port;
-    config::engine_t _engine;
-    std::string _local_address;
+    template <typename T>
+    void add(const std::string &lk, const std::string &desc, T&& default_value)
+    {
+        if (lk.empty())
+        {
+            throw std::runtime_error("key is empty: " + lk);
+        }
+        m_Storage.addValueByKey(lk, "", desc, default_value);
+    }
 
-
-private:
-    static Config *_self;
+    template <typename T>
+    T get(const std::string &key) const
+    {
+        std::pair<SettingItem &, bool> ret = m_Storage.find_option_by_long_key(key);
+        if (!ret.second)
+        {
+            throw std::runtime_error("no such options: " + key);
+        }
+        return ret.first.value().get<T>();
+    }
 
 private:
     Config() {};
@@ -42,7 +59,12 @@ private:
     const Config& operator=(const Config &);
 
 private:
-    void init();
     void read(const std::string &path);
     void parse(const std::string &config);
+    void parseFromConfig(AnyItem &item, AnyItem::type_t type, const std::string &text);
+
+private:
+    static Config *_self;
+
+    SettingsStorage m_Storage;
 };

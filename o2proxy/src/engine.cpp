@@ -27,7 +27,10 @@ namespace
 
         struct hostent* hp = gethostbyname(host.c_str());
         if (NULL == hp)
-            throw std::runtime_error("resolve localhost error: " + std::string(strerror(errno)));
+        {
+            std::string e = std::string("[host: ") + host + ", e: " + std::string(strerror(errno)) + "]";
+            throw std::runtime_error("resolve error " + e);
+        }
 
         char** pAddr = hp->h_addr_list;
         while (*pAddr)
@@ -52,7 +55,7 @@ namespace
 Engine::Engine(int port)
 {
     insert_resolved_ips("localhost", m_LocalIPs);
-    insert_resolved_ips(Config::get()->_local_address, m_LocalIPs);
+    insert_resolved_ips(Config::impl()->get<std::string>("local_address"), m_LocalIPs);
 
     m_Listener = listenSocket(port, kListenQueueSize);
     if (m_Listener <= 0)

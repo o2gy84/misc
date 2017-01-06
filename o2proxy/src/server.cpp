@@ -32,7 +32,7 @@ namespace
                 else       ret.reset(new EpollEngine(port)); 
                 break;
             }
-            case config::engine_t::UNKNOWN: throw std::logic_error("unknown engine type");
+            default: throw std::logic_error("unknown engine type");
         }
 
         logi("use engine: ", engine2string(type));
@@ -42,9 +42,8 @@ namespace
 
 Server::Server(const Options &opt)
 {
-    int port = Config::get()->_port;
+    int port = Config::impl()->get<int>("port");
 
-    // TODO: fix always use this param from default options
     int opt_port = opt.get<int>("port");
     if (opt_port)
     {
@@ -52,11 +51,12 @@ Server::Server(const Options &opt)
         port = opt_port;
     }
 
-    m_Engine = get_engine(Config::get()->_engine, port);
+    config::engine_t engine_type = config::engine_t::UNKNOWN;
+    engine_type = config::string2engine(Config::impl()->get<std::string>("engine"));
+    m_Engine = get_engine(engine_type, port);
 }
 
 void Server::run()
 {
     m_Engine->run();
 }
-
