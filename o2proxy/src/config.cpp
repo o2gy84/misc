@@ -4,6 +4,7 @@
 #include <vector>
 #include <fstream>
 #include <iomanip>
+#include <algorithm>
 
 #include "utils.hpp"
 #include "logger.hpp"
@@ -159,6 +160,44 @@ void Config::parseFromConfig(AnyItem &item, AnyItem::type_t type, const std::str
         file.name = text;
         file.content = content;
         item.store(file);
+    }
+    else if (type == AnyItem::SHARD)
+    {
+        any::shard_t shard;
+        std::vector<std::string> ranges = utils::split(text, ",");
+        for (const std::string &range: ranges)
+        {
+            std::vector<std::string> range_bounds = utils::split(range, "-");
+
+            if (range_bounds.empty() || range_bounds.size() > 2)
+            {
+                throw std::runtime_error("Cannot parse shards range: " + range);
+            }
+
+            try
+            {
+                if (range_bounds.size() == 1)
+                {
+                    shard.shards.push_back(std::stoul(range_bounds[0]));
+                }
+                else
+                {
+                    auto range_begin = std::stoul(range_bounds[0]);
+                    auto range_end = std::stoul(range_bounds[1]);
+                    for (auto shard_i = range_begin; shard_i <= range_end; ++shard_i)
+                    {
+                        shard.shards.push_back(shard_i);
+                    }
+                }
+            }
+            catch (const std::exception &)
+            {
+                throw std::runtime_error("Cannot parse shards range: " + range);
+            }
+        }
+
+        std::sort(shard.shards.begin(), shard.shards.end());
+        item.store(shard);
     }
     else if (type == AnyItem::VECTOR)
     {

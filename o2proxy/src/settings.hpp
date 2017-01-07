@@ -5,7 +5,7 @@
 #include <memory>
 #include <iostream>
 
-// TODO: file, range, map, unittest
+// TODO: map, unittest
 
 // InstantProxies: 127.0.0.1:1337 * 0,1,2-300,301,302-499; 127.0.0.1:1338 * 501-999,500;
 // InstantProxies: 127.0.0.1:1337
@@ -25,6 +25,11 @@ namespace any
         std::string content;
     };
 
+    struct shard_t
+    {
+        std::vector<int> shards;
+    };
+
 }
 
 
@@ -40,6 +45,7 @@ public:
         STRING,
         ADDRESS,
         FILE,
+        SHARD,
         VECTOR
     };
 
@@ -110,6 +116,7 @@ private:
         std::string             *v_string;
         any::address_t          *v_address;
         any::file_t             *v_file;
+        any::shard_t            *v_shard;
         std::vector<AnyItem>    *v_vector;
     }
     m_Ptr;

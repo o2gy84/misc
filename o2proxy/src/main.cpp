@@ -16,10 +16,14 @@ void init_config(const std::string &path, Config *conf)
     conf->add("test3", "test 3", 0.);
     conf->add("test4", "test 4 address", any::address_t());
     conf->add("test5", "test 5 file", any::file_t());
+    conf->add("test6", "test 6 shards", any::shard_t());
 
     conf->load(path);
     conf->dump();
     logd5("", conf->usage());
+
+    any::shard_t test6 = conf->get<any::shard_t>("test6");
+    logd("test6 shards size: ", test6.shards.size());
 
     any::file_t test5 = conf->get<any::file_t>("test5");
     logd("test5 file: {0} {1} bytes", test5.name, test5.content.size());

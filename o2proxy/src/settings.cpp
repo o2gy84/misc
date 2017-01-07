@@ -139,6 +139,24 @@ void AnyItem::store_impl<any::file_t>(any::file_t v, any::file_t *)
     m_Type = FILE;
 }
 
+template <>
+any::shard_t AnyItem::get_impl<any::shard_t>(any::shard_t *) const
+{
+    return *(m_Ptr.v_shard);
+}
+template <>
+void AnyItem::store_impl<any::shard_t>(any::shard_t v, any::shard_t *)
+{
+    if (m_Ptr.v_shard)
+    {
+        delete m_Ptr.v_shard;
+    }
+
+    m_Ptr.v_shard = new any::shard_t();
+    m_Ptr.v_shard->shards = v.shards;
+    m_Type = SHARD;
+}
+
 
 
 AnyItem::AnyItem()
@@ -180,6 +198,7 @@ void AnyItem::clone(const AnyItem &rhs)
         case STRING:    { store(rhs.get<std::string>()); break; }
         case ADDRESS:   { store(rhs.get<any::address_t>()); break; }
         case FILE:      { store(rhs.get<any::file_t>()); break; }
+        case SHARD:     { store(rhs.get<any::shard_t>()); break; }
         case VECTOR:    { cloneAsVector(rhs); break; }
         default:        { throw std::runtime_error("not implemented type"); }
     }
@@ -213,6 +232,7 @@ AnyItem::~AnyItem()
         case STRING:    { delete m_Ptr.v_string; break; }
         case ADDRESS:   { delete m_Ptr.v_address; break; }
         case FILE:      { delete m_Ptr.v_file; break; }
+        case SHARD:     { delete m_Ptr.v_shard; break; }
         case VECTOR:    { delete m_Ptr.v_vector; break; }
         default: {}
     }
@@ -228,6 +248,16 @@ std::ostream& operator<<(std::ostream& os, const AnyItem& item)
         case AnyItem::STRING:    { os << item.get<std::string>(); break; }
         case AnyItem::ADDRESS:   { any::address_t a = item.get<any::address_t>(); os << a.host << ":" << a.port; break; }
         case AnyItem::FILE:      { any::file_t f = item.get<any::file_t>(); os << f.name << ", " << f.content.size() << " bytes"; break; }
+        case AnyItem::SHARD:     {
+                                    any::shard_t s = item.get<any::shard_t>();
+                                    os << "total: " << s.shards.size() << "; shards list: ";
+                                    for (size_t i = 0; i < s.shards.size(); ++i)
+                                    {
+                                        if (i != 0) os << ", ";
+                                        os << s.shards[i];
+                                    }
+                                    break;
+                                 }
         case AnyItem::VECTOR:    {
                                     os << "[";
                                     for (size_t i = 0; i < item.m_Ptr.v_vector->size(); ++i)
