@@ -96,7 +96,7 @@ void Config::parse(const std::string &config)
     std::vector<std::string> lines = utils::split(config, "\n");
     for (size_t i = 0; i < lines.size(); ++i)
     {
-        std::vector<std::string> pair = utils::split(lines[i], ":");
+        std::vector<std::string> pair = utils::split(lines[i], ":", 2);
         if (pair.size() < 2)
         {
             continue;
@@ -131,6 +131,18 @@ void Config::parseFromConfig(AnyItem &item, AnyItem::type_t type, const std::str
     else if (type == AnyItem::STRING)
     {
         item.store(text);
+    }
+    else if (type == AnyItem::ADDRESS)
+    {
+        std::vector<std::string> tmp = utils::split(text, ":");
+        if (tmp.size() != 2)
+        {
+            throw std::runtime_error("parse config: value is not address - " + text);
+        }
+        any::address_t address;
+        address.host = tmp[0];
+        address.port = std::stoi(tmp[1]);
+        item.store(address);
     }
     else if (type == AnyItem::VECTOR)
     {

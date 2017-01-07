@@ -5,13 +5,20 @@
 #include <memory>
 #include <iostream>
 
-// TODO: address, file, range, map, unittest
+// TODO: file, range, map, unittest
 
 // InstantProxies: 127.0.0.1:1337 * 0,1,2-300,301,302-499; 127.0.0.1:1338 * 501-999,500;
 // InstantProxies: 127.0.0.1:1337
 // InstantProxies: unix:/var/run/conkee.sock
 
-
+namespace any
+{
+    struct address_t
+    {
+        uint16_t port;
+        std::string host;
+    };
+}
 
 
 class AnyItem
@@ -24,6 +31,7 @@ public:
         INT,
         DOUBLE,
         STRING,
+        ADDRESS,
         VECTOR
     };
 
@@ -92,6 +100,7 @@ private:
         int                     *v_int;
         double                  *v_double;
         std::string             *v_string;
+        any::address_t          *v_address;
         std::vector<AnyItem>    *v_vector;
     }
     m_Ptr;

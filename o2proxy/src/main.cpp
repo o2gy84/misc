@@ -14,10 +14,14 @@ void init_config(const std::string &path, Config *conf)
     conf->add("test1", "test 1", std::vector<int>());
     conf->add("test2", "test 2", std::vector<std::string>());
     conf->add("test3", "test 3", 0.);
+    conf->add("test4", "test 4 address", any::address_t());
 
     conf->load(path);
     conf->dump();
     logd5("", conf->usage());
+
+    any::address_t test4 = conf->get<any::address_t>("test4");
+    logd("test4 address: {0}:{1}", test4.host, test4.port);
 
     double test3 = conf->get<double>("test3");
     logd("test3 double: ", test3);

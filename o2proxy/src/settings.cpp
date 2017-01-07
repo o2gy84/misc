@@ -76,7 +76,7 @@ void AnyItem::store_impl<double>(double v, double *)
 template <>
 std::string AnyItem::get_impl<std::string>(std::string *) const
 {
-    return *(m_Ptr.v_string); 
+    return *(m_Ptr.v_string);
 }
 template <>
 void AnyItem::store_impl<std::string>(std::string v, std::string *)
@@ -99,6 +99,25 @@ void AnyItem::store_impl<const char*>(const char *v, const char**)
 
     m_Ptr.v_string = new std::string(v);
     m_Type = STRING;
+}
+
+template <>
+any::address_t AnyItem::get_impl<any::address_t>(any::address_t *) const
+{
+    return *(m_Ptr.v_address);
+}
+template <>
+void AnyItem::store_impl<any::address_t>(any::address_t v, any::address_t *)
+{
+    if (m_Ptr.v_address)
+    {
+        delete m_Ptr.v_address;
+    }
+
+    m_Ptr.v_address = new any::address_t();
+    m_Ptr.v_address->port = v.port;
+    m_Ptr.v_address->host = v.host;
+    m_Type = ADDRESS;
 }
 
 
@@ -140,6 +159,7 @@ void AnyItem::clone(const AnyItem &rhs)
         case INT:       { store(rhs.get<int>()); break; }
         case DOUBLE:    { store(rhs.get<double>()); break; }
         case STRING:    { store(rhs.get<std::string>()); break; }
+        case ADDRESS:   { store(rhs.get<any::address_t>()); break; }
         case VECTOR:    { cloneAsVector(rhs); break; }
         default:        { throw std::runtime_error("not implemented type"); }
     }
@@ -171,6 +191,7 @@ AnyItem::~AnyItem()
         case INT:       { delete m_Ptr.v_int; break; }
         case DOUBLE:    { delete m_Ptr.v_double; break; }
         case STRING:    { delete m_Ptr.v_string; break; }
+        case ADDRESS:   { delete m_Ptr.v_address; break; }
         case VECTOR:    { delete m_Ptr.v_vector; break; }
         default: {}
     }
@@ -184,6 +205,7 @@ std::ostream& operator<<(std::ostream& os, const AnyItem& item)
         case AnyItem::INT:       { os << item.get<int>(); break; }
         case AnyItem::DOUBLE:    { os << item.get<double>(); break; }
         case AnyItem::STRING:    { os << item.get<std::string>(); break; }
+        case AnyItem::ADDRESS:   { any::address_t a = item.get<any::address_t>(); os << a.host << ":" << a.port; break; }
         case AnyItem::VECTOR:    {
                                     os << "[";
                                     for (size_t i = 0; i < item.m_Ptr.v_vector->size(); ++i)
