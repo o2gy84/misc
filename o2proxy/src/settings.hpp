@@ -18,6 +18,13 @@ namespace any
         uint16_t port;
         std::string host;
     };
+
+    struct file_t
+    {
+        std::string name;
+        std::string content;
+    };
+
 }
 
 
@@ -32,6 +39,7 @@ public:
         DOUBLE,
         STRING,
         ADDRESS,
+        FILE,
         VECTOR
     };
 
@@ -101,6 +109,7 @@ private:
         double                  *v_double;
         std::string             *v_string;
         any::address_t          *v_address;
+        any::file_t             *v_file;
         std::vector<AnyItem>    *v_vector;
     }
     m_Ptr;

@@ -144,6 +144,22 @@ void Config::parseFromConfig(AnyItem &item, AnyItem::type_t type, const std::str
         address.port = std::stoi(tmp[1]);
         item.store(address);
     }
+    else if (type == AnyItem::FILE)
+    {
+        std::ifstream ifs(text.c_str());
+        if (!ifs.good())
+        {
+            throw std::runtime_error("cannot open file \"" + text + "\"");
+        }
+
+        std::string content((std::istreambuf_iterator<char>(ifs)),
+                 std::istreambuf_iterator<char>());
+
+        any::file_t file;
+        file.name = text;
+        file.content = content;
+        item.store(file);
+    }
     else if (type == AnyItem::VECTOR)
     {
         std::vector<std::string> tmp = utils::split(text, ",");

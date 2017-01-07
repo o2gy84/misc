@@ -120,6 +120,25 @@ void AnyItem::store_impl<any::address_t>(any::address_t v, any::address_t *)
     m_Type = ADDRESS;
 }
 
+template <>
+any::file_t AnyItem::get_impl<any::file_t>(any::file_t *) const
+{
+    return *(m_Ptr.v_file);
+}
+template <>
+void AnyItem::store_impl<any::file_t>(any::file_t v, any::file_t *)
+{
+    if (m_Ptr.v_file)
+    {
+        delete m_Ptr.v_file;
+    }
+
+    m_Ptr.v_file = new any::file_t();
+    m_Ptr.v_file->name = v.name;
+    m_Ptr.v_file->content = v.content;
+    m_Type = FILE;
+}
+
 
 
 AnyItem::AnyItem()
@@ -160,6 +179,7 @@ void AnyItem::clone(const AnyItem &rhs)
         case DOUBLE:    { store(rhs.get<double>()); break; }
         case STRING:    { store(rhs.get<std::string>()); break; }
         case ADDRESS:   { store(rhs.get<any::address_t>()); break; }
+        case FILE:      { store(rhs.get<any::file_t>()); break; }
         case VECTOR:    { cloneAsVector(rhs); break; }
         default:        { throw std::runtime_error("not implemented type"); }
     }
@@ -192,6 +212,7 @@ AnyItem::~AnyItem()
         case DOUBLE:    { delete m_Ptr.v_double; break; }
         case STRING:    { delete m_Ptr.v_string; break; }
         case ADDRESS:   { delete m_Ptr.v_address; break; }
+        case FILE:      { delete m_Ptr.v_file; break; }
         case VECTOR:    { delete m_Ptr.v_vector; break; }
         default: {}
     }
@@ -206,6 +227,7 @@ std::ostream& operator<<(std::ostream& os, const AnyItem& item)
         case AnyItem::DOUBLE:    { os << item.get<double>(); break; }
         case AnyItem::STRING:    { os << item.get<std::string>(); break; }
         case AnyItem::ADDRESS:   { any::address_t a = item.get<any::address_t>(); os << a.host << ":" << a.port; break; }
+        case AnyItem::FILE:      { any::file_t f = item.get<any::file_t>(); os << f.name << ", " << f.content.size() << " bytes"; break; }
         case AnyItem::VECTOR:    {
                                     os << "[";
                                     for (size_t i = 0; i < item.m_Ptr.v_vector->size(); ++i)
