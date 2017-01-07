@@ -123,6 +123,11 @@ void Config::parseFromConfig(AnyItem &item, AnyItem::type_t type, const std::str
         int v = std::stoi(text);
         item.store(v);
     }
+    else if (type == AnyItem::DOUBLE)
+    {
+        double v = std::stod(text);
+        item.store(v);
+    }
     else if (type == AnyItem::STRING)
     {
         item.store(text);

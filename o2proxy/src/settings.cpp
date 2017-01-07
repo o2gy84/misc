@@ -56,6 +56,24 @@ void AnyItem::store_impl<int>(int v, int *)
 }
 
 template <>
+double AnyItem::get_impl<double>(double *) const
+{
+    return *(m_Ptr.v_double);
+}
+template <>
+void AnyItem::store_impl<double>(double v, double *)
+{
+    if (m_Ptr.v_double)
+    {
+        delete m_Ptr.v_double;
+    }
+
+    m_Ptr.v_double = new double(v);
+    m_Type = DOUBLE;
+}
+
+
+template <>
 std::string AnyItem::get_impl<std::string>(std::string *) const
 {
     return *(m_Ptr.v_string); 
@@ -120,6 +138,7 @@ void AnyItem::clone(const AnyItem &rhs)
     {
         case BOOL:      { store(rhs.get<bool>()); break; }
         case INT:       { store(rhs.get<int>()); break; }
+        case DOUBLE:    { store(rhs.get<double>()); break; }
         case STRING:    { store(rhs.get<std::string>()); break; }
         case VECTOR:    { cloneAsVector(rhs); break; }
         default:        { throw std::runtime_error("not implemented type"); }
@@ -150,6 +169,7 @@ AnyItem::~AnyItem()
     {
         case BOOL:      { delete m_Ptr.v_bool; break; }
         case INT:       { delete m_Ptr.v_int; break; }
+        case DOUBLE:    { delete m_Ptr.v_double; break; }
         case STRING:    { delete m_Ptr.v_string; break; }
         case VECTOR:    { delete m_Ptr.v_vector; break; }
         default: {}
@@ -162,6 +182,7 @@ std::ostream& operator<<(std::ostream& os, const AnyItem& item)
     {
         case AnyItem::BOOL:      { os << std::boolalpha << item.get<bool>(); break; }
         case AnyItem::INT:       { os << item.get<int>(); break; }
+        case AnyItem::DOUBLE:    { os << item.get<double>(); break; }
         case AnyItem::STRING:    { os << item.get<std::string>(); break; }
         case AnyItem::VECTOR:    {
                                     os << "[";

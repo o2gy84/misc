@@ -11,14 +11,17 @@ void init_config(const std::string &path, Config *conf)
     conf->add("port", "port to listen to", 7788);
     conf->add("engine", "input/output engine: select, poll or epoll", "epoll");
     conf->add("local_address", "local address", "");
-    //conf->add("test1", "test 1", std::vector<int>());
-    //conf->add("test2", "test 2", std::vector<std::string>());
+    conf->add("test1", "test 1", std::vector<int>());
+    conf->add("test2", "test 2", std::vector<std::string>());
+    conf->add("test3", "test 3", 0.);
 
     conf->load(path);
     conf->dump();
     logd5("", conf->usage());
 
-    /*
+    double test3 = conf->get<double>("test3");
+    logd("test3 double: ", test3);
+
     std::vector<int> test1 = conf->get<std::vector<int>>("test1");
     for (size_t i = 0; i < test1.size(); ++i)
     {
@@ -29,7 +32,9 @@ void init_config(const std::string &path, Config *conf)
     {
         logi("test[{0}] = {1}", i, test2[i]);
     }
-    */
+
+
+
 }
 
 int main(int argc, char *argv[])

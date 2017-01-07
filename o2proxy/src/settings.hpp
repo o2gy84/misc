@@ -5,7 +5,7 @@
 #include <memory>
 #include <iostream>
 
-// TODO: double, address, file, range, map, unittest
+// TODO: address, file, range, map, unittest
 
 // InstantProxies: 127.0.0.1:1337 * 0,1,2-300,301,302-499; 127.0.0.1:1338 * 501-999,500;
 // InstantProxies: 127.0.0.1:1337
@@ -22,6 +22,7 @@ public:
         UNDEF,
         BOOL,
         INT,
+        DOUBLE,
         STRING,
         VECTOR
     };
@@ -89,6 +90,7 @@ private:
     {
         bool                    *v_bool;
         int                     *v_int;
+        double                  *v_double;
         std::string             *v_string;
         std::vector<AnyItem>    *v_vector;
     }
