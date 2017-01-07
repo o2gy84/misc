@@ -5,6 +5,15 @@
 #include <memory>
 #include <iostream>
 
+// TODO: double, address, file, range, map, unittest
+
+// InstantProxies: 127.0.0.1:1337 * 0,1,2-300,301,302-499; 127.0.0.1:1338 * 501-999,500;
+// InstantProxies: 127.0.0.1:1337
+// InstantProxies: unix:/var/run/conkee.sock
+
+
+
+
 class AnyItem
 {
 public:
@@ -29,11 +38,13 @@ public:
     template <typename T> void store(T v)   { store_impl(v, static_cast<T*>(nullptr)); }
     template <typename T> T get() const     { return get_impl(static_cast<T*>(nullptr)); }
 
+    // allow push back only in vectors
     void pushBack(const AnyItem &any);
 
     friend std::ostream& operator<<(std::ostream& os, const AnyItem& item);
 
 private:
+    // this will be specialized in .cpp
     template <typename T> T get_impl(T *) const;
 
     //this is overload - not specialization
@@ -47,6 +58,7 @@ private:
         return ret;
     }
 
+    // this will be specialized in .cpp
     template <typename T> void store_impl(T v, T *);
 
     //this is overload - not specialization

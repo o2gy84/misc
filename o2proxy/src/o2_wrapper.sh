@@ -25,7 +25,7 @@ while true; do
         d=`date`
         echo "[${d}] ${O2_PROXY} not running.. restart ${O2_PROXY}"
         ulimit -c unlimited
-        nohup ${BIN} -p 7788 1>>o2proxy.log 2>&1 &
+        ${BIN} -p 7788 --syslog &
     else
         :
         #echo "[debug] process (${O2_PROXY}) runnnig OK"

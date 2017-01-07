@@ -128,11 +128,14 @@ void AnyItem::clone(const AnyItem &rhs)
 
 AnyItem::AnyItem(const AnyItem &rhs)
 {
+    m_Ptr.v_bool = nullptr;
     clone(rhs);
 }
 
 AnyItem& AnyItem::operator=(const AnyItem &rhs)
 {
+    m_Ptr.v_bool = nullptr;
+
     if (this == &rhs)
     {
         return *this;

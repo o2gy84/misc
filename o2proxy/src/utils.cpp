@@ -30,7 +30,7 @@ namespace utils
                 break;
         }
 
-        if (prev_pos + delimiter.size() < line.size())
+        if (prev_pos + delimiter.size() <= line.size())
         {
             std::string tmp(line.begin() + prev_pos, line.end());
             strs.emplace_back(tmp);
