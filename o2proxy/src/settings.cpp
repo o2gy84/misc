@@ -1,6 +1,7 @@
 #include "settings.hpp"
 
 void AnyItem::pushBack(const AnyItem &any)
+// push in case Vector
 {
     if (m_Type != VECTOR)
     {
@@ -18,6 +19,32 @@ void AnyItem::pushBack(const AnyItem &any)
     }
 
     m_Ptr.v_vector->push_back(any);
+}
+
+void AnyItem::insertPair(const std::pair<AnyItem, AnyItem> &pair)
+// push in case Map
+{
+    if (m_Type != MAP)
+    {
+        throw std::runtime_error("insert in any which is not map");
+    }
+
+    if (m_MapKeyType != pair.first.type())
+    {
+        throw std::runtime_error("insert in any with different key type");
+    }
+
+    if (m_MapValueType != pair.second.type())
+    {
+        throw std::runtime_error("insert in any with different value type");
+    }
+
+    if (m_Ptr.v_map == nullptr)
+    {
+         throw std::runtime_error("insert into any which is not inicialized");
+    }
+
+    (*m_Ptr.v_map)[pair.first] = pair.second;
 }
 
 
@@ -187,6 +214,34 @@ void AnyItem::cloneAsVector(const AnyItem &rhs)
     }
 }
 
+void AnyItem::cloneAsMap(const AnyItem &rhs)
+{
+    if (m_Ptr.v_map)
+    {
+        delete m_Ptr.v_map;
+    }
+
+    m_Type = MAP;
+    m_MapKeyType = rhs.m_MapKeyType;
+    m_MapValueType = rhs.m_MapValueType;
+
+    m_Ptr.v_map = new std::map<AnyItem, AnyItem>();
+
+    const std::map<AnyItem, AnyItem> v = *(rhs.m_Ptr.v_map);
+
+    for (auto it = v.begin(); it != v.end(); ++it)
+    {
+        AnyItem any_key;
+        any_key.clone(it->first);
+
+        AnyItem any_val;
+        any_val.clone(it->second);
+
+        insertPair(std::pair<AnyItem, AnyItem>(any_key, any_val));
+    }
+}
+
+
 void AnyItem::clone(const AnyItem &rhs)
 {
     m_Type = rhs.m_Type;
@@ -200,6 +255,7 @@ void AnyItem::clone(const AnyItem &rhs)
         case FILE:      { store(rhs.get<settings::file_t>()); break; }
         case SHARD:     { store(rhs.get<settings::shard_t>()); break; }
         case VECTOR:    { cloneAsVector(rhs); break; }
+        case MAP:       { cloneAsMap(rhs); break; }
         default:        { throw std::runtime_error("not implemented type"); }
     }
 }
@@ -234,6 +290,7 @@ AnyItem::~AnyItem()
         case FILE:      { delete m_Ptr.v_file; break; }
         case SHARD:     { delete m_Ptr.v_shard; break; }
         case VECTOR:    { delete m_Ptr.v_vector; break; }
+        case MAP:       { delete m_Ptr.v_map; break; }
         default: {}
     }
 }
@@ -266,6 +323,17 @@ std::ostream& operator<<(std::ostream& os, const AnyItem& item)
                                         os << item.m_Ptr.v_vector->at(i);
                                     }
                                     os << "]";
+                                    break;
+                                 }
+        case AnyItem::MAP:    {
+                                    int counter = 0;
+                                    os << "{";
+                                    for (auto it = item.m_Ptr.v_map->begin(); it != item.m_Ptr.v_map->end(); ++it)
+                                    {
+                                        if (counter++ != 0) os << ", ";
+                                        os << it->first << " => " << it->second;
+                                    }
+                                    os << "}";
                                     break;
                                  }
 

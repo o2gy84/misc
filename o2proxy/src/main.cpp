@@ -17,10 +17,16 @@ void init_config(const std::string &path, Config *conf)
     conf->add("test4", "test 4 address", settings::address_t());
     conf->add("test5", "test 5 file", settings::file_t());
     conf->add("test6", "test 6 shards", settings::shard_t());
+    conf->add("test7", "test 7 map", std::map<std::string, std::string>());
+    conf->add("test8", "test 8 map", std::map<settings::address_t, settings::shard_t>());
 
     conf->load(path);
     conf->dump();
     logd5("", conf->usage());
+
+    /*
+    std::map<std::string, std::string> test7 = conf->get<std::map<std::string, std::string>>("test7");
+    logd("test7 map size: ", test7.size());
 
     settings::shard_t test6 = conf->get<settings::shard_t>("test6");
     logd("test6 shards size: ", test6.shards.size());
@@ -44,9 +50,7 @@ void init_config(const std::string &path, Config *conf)
     {
         logi("test[{0}] = {1}", i, test2[i]);
     }
-
-
-
+    */
 }
 
 int main(int argc, char *argv[])

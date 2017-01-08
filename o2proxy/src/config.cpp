@@ -42,8 +42,136 @@ std::string engine2string(engine_t engine)
     return "unknown";
 }
 
+struct token_t
+{
+    token_t() {}
+    std::string key;
+    std::string value;
+    void reset() { key = value = ""; }
+};
 
+
+std::string next_line(const std::string &config, std::string::size_type &prev_pos)
+{
+    while (config[prev_pos] == '\n')
+    {
+        ++prev_pos;
+    }
+
+    std::string::size_type cr_pos = config.find("\n", prev_pos);
+    if (cr_pos == std::string::npos)
+    {
+        cr_pos = config.size();
+    }
+
+    if (cr_pos <= prev_pos)
+    {
+        // parse is over
+        return "";
+    }
+
+    std::string line = config.substr(prev_pos, cr_pos - prev_pos);
+    prev_pos = cr_pos + 1;
+    return line;
 }
+
+int get_next_token(const std::string &config, std::string::size_type &prev_pos, token_t &token)
+// values are:
+// 1. usual keys, key : value
+// 2. maps, key : {
+//             key: value
+//          }
+{
+    std::string line = next_line(config, prev_pos);
+    if (line.empty())
+    {
+        // parse is over
+        return 0;
+    }
+
+    line = utils::trimmed(line);
+
+    std::vector<std::string> parts = utils::split(line, ":", 2);
+    if (parts.size() == 0)
+    {
+        throw std::runtime_error("invalid config: " + line);
+    }
+
+    token.key = utils::trimmed(parts[0]);
+
+    std::string value;
+    if (parts.size() == 2)
+    {
+        value = utils::trimmed(parts[1]);
+        if (value[0] != '{')
+        {
+            token.value = value;
+            return 1;
+        }
+    }
+
+    // is map?
+    if (value.empty())
+    {
+        value = next_line(config, prev_pos);
+        if (value.empty())
+        {
+            throw std::runtime_error("invalid config: " + line);
+        }
+        value = utils::trimmed(value);
+    }
+
+    if (value[0] != '{')
+    {
+        throw std::runtime_error("invalid config (expected '{') in line: " + line);
+    }
+
+    // is map! need find closed '}'
+
+    std::string::size_type close_map_pos = value.find("}");
+    if (close_map_pos != std::string::npos)
+    {
+        token.value = value.substr(0, close_map_pos + 1);
+        return 1;
+    }
+
+    close_map_pos = config.find("}", prev_pos);
+    if (close_map_pos == std::string::npos)
+    {
+         throw std::runtime_error("invalid config: " + line);
+    }
+
+    token.value = value + config.substr(prev_pos, close_map_pos + 1 - prev_pos);
+
+    prev_pos = close_map_pos + 1;
+    return 1;
+}
+
+std::string skip_comments(const std::string &_config)
+{
+    std::string ret;
+    std::vector<std::string> lines = utils::split(_config, "\n");
+    for (size_t i = 0; i < lines.size(); ++i)
+    {
+        std::string line = utils::trimmed(lines[i]);
+        if (line.empty())
+        {
+            continue;
+        }
+
+        if (line[0] == '#')
+        {
+            continue;
+        }
+
+        ret += line;
+        ret += "\n";
+    }
+
+    return ret;
+}
+
+} // namespace
 
 Config* Config::_self = nullptr;
 
@@ -92,28 +220,23 @@ void Config::read(const std::string &path)
     parse(config);
 }
 
-void Config::parse(const std::string &config)
+void Config::parse(const std::string &_config)
 {
-    std::vector<std::string> lines = utils::split(config, "\n");
-    for (size_t i = 0; i < lines.size(); ++i)
+    std::string config = config::skip_comments(_config);
+
+    config::token_t token;
+    std::string::size_type prev_pos = 0;
+    while (config::get_next_token(config, prev_pos, token))
     {
-        std::vector<std::string> pair = utils::split(lines[i], ":", 2);
-        if (pair.size() < 2)
-        {
-            continue;
-        }
-
-        std::string key = utils::trimmed(pair[0]);
-        std::string value = utils::trimmed(pair[1]);
-
-        std::pair<SettingItem &, bool> item = m_Storage.find_option_by_long_key(key);
+        std::pair<SettingItem &, bool> item = m_Storage.find_option_by_long_key(token.key);
         if (!item.second)
         {
-            logw("unused key in config: ", key);
+            logw("unused key in config: ", token.key);
             continue;
         }
 
-        parseFromConfig(item.first.value(), item.first.value().type(), value);
+        parseFromConfig(item.first.value(), item.first.value().type(), token.value);
+        token.reset();
     }
 }
 
@@ -135,14 +258,22 @@ void Config::parseFromConfig(AnyItem &item, AnyItem::type_t type, const std::str
     }
     else if (type == AnyItem::ADDRESS)
     {
+        settings::address_t address;
         std::vector<std::string> tmp = utils::split(text, ":");
-        if (tmp.size() != 2)
+        if (tmp.size() == 1)
+        {
+            address.host = tmp[0];
+            address.port = 0;
+        }
+        else if (tmp.size() == 2)
+        {
+            address.host = tmp[0];
+            address.port = std::stoi(tmp[1]);
+        }
+        else
         {
             throw std::runtime_error("parse config: value is not address - " + text);
         }
-        settings::address_t address;
-        address.host = tmp[0];
-        address.port = std::stoi(tmp[1]);
         item.store(address);
     }
     else if (type == AnyItem::FILE)
@@ -214,6 +345,27 @@ void Config::parseFromConfig(AnyItem &item, AnyItem::type_t type, const std::str
             AnyItem any;
             parseFromConfig(any, item.vectorType(), tmp[i]);
             item.pushBack(any);
+        }
+    }
+    else if (type == AnyItem::MAP)
+    {
+        // skip braces {}
+        std::string map_val = text.substr(1, text.size() - 2);
+
+        config::token_t token;
+        std::string::size_type prev_pos = 0;
+        while (config::get_next_token(map_val, prev_pos, token))
+        {
+            logd("MAP key: {0}, val: {1}", token.key, token.value);
+
+            AnyItem any_key;
+            parseFromConfig(any_key, item.mapKeyType(), token.key);
+
+            AnyItem any_val;
+            parseFromConfig(any_val, item.mapValueType(), token.value);
+
+            item.insertPair(std::pair<AnyItem, AnyItem>(any_key, any_val));
+            token.reset();
         }
     }
 }
