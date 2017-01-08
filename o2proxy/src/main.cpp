@@ -14,21 +14,21 @@ void init_config(const std::string &path, Config *conf)
     conf->add("test1", "test 1", std::vector<int>());
     conf->add("test2", "test 2", std::vector<std::string>());
     conf->add("test3", "test 3", 0.);
-    conf->add("test4", "test 4 address", any::address_t());
-    conf->add("test5", "test 5 file", any::file_t());
-    conf->add("test6", "test 6 shards", any::shard_t());
+    conf->add("test4", "test 4 address", settings::address_t());
+    conf->add("test5", "test 5 file", settings::file_t());
+    conf->add("test6", "test 6 shards", settings::shard_t());
 
     conf->load(path);
     conf->dump();
     logd5("", conf->usage());
 
-    any::shard_t test6 = conf->get<any::shard_t>("test6");
+    settings::shard_t test6 = conf->get<settings::shard_t>("test6");
     logd("test6 shards size: ", test6.shards.size());
 
-    any::file_t test5 = conf->get<any::file_t>("test5");
+    settings::file_t test5 = conf->get<settings::file_t>("test5");
     logd("test5 file: {0} {1} bytes", test5.name, test5.content.size());
 
-    any::address_t test4 = conf->get<any::address_t>("test4");
+    settings::address_t test4 = conf->get<settings::address_t>("test4");
     logd("test4 address: {0}:{1}", test4.host, test4.port);
 
     double test3 = conf->get<double>("test3");

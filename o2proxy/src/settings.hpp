@@ -11,7 +11,7 @@
 // InstantProxies: 127.0.0.1:1337
 // InstantProxies: unix:/var/run/conkee.sock
 
-namespace any
+namespace settings
 {
     struct address_t
     {
@@ -114,9 +114,9 @@ private:
         int                     *v_int;
         double                  *v_double;
         std::string             *v_string;
-        any::address_t          *v_address;
-        any::file_t             *v_file;
-        any::shard_t            *v_shard;
+        settings::address_t     *v_address;
+        settings::file_t        *v_file;
+        settings::shard_t       *v_shard;
         std::vector<AnyItem>    *v_vector;
     }
     m_Ptr;

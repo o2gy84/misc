@@ -140,7 +140,7 @@ void Config::parseFromConfig(AnyItem &item, AnyItem::type_t type, const std::str
         {
             throw std::runtime_error("parse config: value is not address - " + text);
         }
-        any::address_t address;
+        settings::address_t address;
         address.host = tmp[0];
         address.port = std::stoi(tmp[1]);
         item.store(address);
@@ -156,31 +156,26 @@ void Config::parseFromConfig(AnyItem &item, AnyItem::type_t type, const std::str
         std::string content((std::istreambuf_iterator<char>(ifs)),
                  std::istreambuf_iterator<char>());
 
-        any::file_t file;
+        settings::file_t file;
         file.name = text;
         file.content = content;
         item.store(file);
     }
     else if (type == AnyItem::SHARD)
     {
-        any::shard_t shard;
+        settings::shard_t shard;
         std::vector<std::string> ranges = utils::split(text, ",");
         for (const std::string &range: ranges)
         {
-            std::vector<std::string> range_bounds = utils::split(range, "-");
-
-            if (range_bounds.empty() || range_bounds.size() > 2)
+            if (range.find("-") != std::string::npos)
             {
-                throw std::runtime_error("Cannot parse shards range: " + range);
-            }
-
-            try
-            {
-                if (range_bounds.size() == 1)
+                std::vector<std::string> range_bounds = utils::split(range, "-");
+                if (range_bounds.size() != 2)
                 {
-                    shard.shards.push_back(std::stoul(range_bounds[0]));
+                    throw std::runtime_error("Cannot parse shards range: " + range);
                 }
-                else
+
+                try
                 {
                     auto range_begin = std::stoul(range_bounds[0]);
                     auto range_end = std::stoul(range_bounds[1]);
@@ -189,10 +184,21 @@ void Config::parseFromConfig(AnyItem &item, AnyItem::type_t type, const std::str
                         shard.shards.push_back(shard_i);
                     }
                 }
+                catch (const std::exception &)
+                {
+                    throw std::runtime_error("Cannot parse shards range: " + range);
+                }
             }
-            catch (const std::exception &)
+            else
             {
-                throw std::runtime_error("Cannot parse shards range: " + range);
+                try
+                {
+                    shard.shards.push_back(std::stoul(range));
+                }
+                catch (const std::exception &)
+                {
+                    throw std::runtime_error("Cannot parse shards range: " + range);
+                }
             }
         }
 

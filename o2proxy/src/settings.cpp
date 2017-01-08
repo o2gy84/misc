@@ -102,57 +102,57 @@ void AnyItem::store_impl<const char*>(const char *v, const char**)
 }
 
 template <>
-any::address_t AnyItem::get_impl<any::address_t>(any::address_t *) const
+settings::address_t AnyItem::get_impl<settings::address_t>(settings::address_t *) const
 {
     return *(m_Ptr.v_address);
 }
 template <>
-void AnyItem::store_impl<any::address_t>(any::address_t v, any::address_t *)
+void AnyItem::store_impl<settings::address_t>(settings::address_t v, settings::address_t *)
 {
     if (m_Ptr.v_address)
     {
         delete m_Ptr.v_address;
     }
 
-    m_Ptr.v_address = new any::address_t();
+    m_Ptr.v_address = new settings::address_t();
     m_Ptr.v_address->port = v.port;
     m_Ptr.v_address->host = v.host;
     m_Type = ADDRESS;
 }
 
 template <>
-any::file_t AnyItem::get_impl<any::file_t>(any::file_t *) const
+settings::file_t AnyItem::get_impl<settings::file_t>(settings::file_t *) const
 {
     return *(m_Ptr.v_file);
 }
 template <>
-void AnyItem::store_impl<any::file_t>(any::file_t v, any::file_t *)
+void AnyItem::store_impl<settings::file_t>(settings::file_t v, settings::file_t *)
 {
     if (m_Ptr.v_file)
     {
         delete m_Ptr.v_file;
     }
 
-    m_Ptr.v_file = new any::file_t();
+    m_Ptr.v_file = new settings::file_t();
     m_Ptr.v_file->name = v.name;
     m_Ptr.v_file->content = v.content;
     m_Type = FILE;
 }
 
 template <>
-any::shard_t AnyItem::get_impl<any::shard_t>(any::shard_t *) const
+settings::shard_t AnyItem::get_impl<settings::shard_t>(settings::shard_t *) const
 {
     return *(m_Ptr.v_shard);
 }
 template <>
-void AnyItem::store_impl<any::shard_t>(any::shard_t v, any::shard_t *)
+void AnyItem::store_impl<settings::shard_t>(settings::shard_t v, settings::shard_t *)
 {
     if (m_Ptr.v_shard)
     {
         delete m_Ptr.v_shard;
     }
 
-    m_Ptr.v_shard = new any::shard_t();
+    m_Ptr.v_shard = new settings::shard_t();
     m_Ptr.v_shard->shards = v.shards;
     m_Type = SHARD;
 }
@@ -196,9 +196,9 @@ void AnyItem::clone(const AnyItem &rhs)
         case INT:       { store(rhs.get<int>()); break; }
         case DOUBLE:    { store(rhs.get<double>()); break; }
         case STRING:    { store(rhs.get<std::string>()); break; }
-        case ADDRESS:   { store(rhs.get<any::address_t>()); break; }
-        case FILE:      { store(rhs.get<any::file_t>()); break; }
-        case SHARD:     { store(rhs.get<any::shard_t>()); break; }
+        case ADDRESS:   { store(rhs.get<settings::address_t>()); break; }
+        case FILE:      { store(rhs.get<settings::file_t>()); break; }
+        case SHARD:     { store(rhs.get<settings::shard_t>()); break; }
         case VECTOR:    { cloneAsVector(rhs); break; }
         default:        { throw std::runtime_error("not implemented type"); }
     }
@@ -246,10 +246,10 @@ std::ostream& operator<<(std::ostream& os, const AnyItem& item)
         case AnyItem::INT:       { os << item.get<int>(); break; }
         case AnyItem::DOUBLE:    { os << item.get<double>(); break; }
         case AnyItem::STRING:    { os << item.get<std::string>(); break; }
-        case AnyItem::ADDRESS:   { any::address_t a = item.get<any::address_t>(); os << a.host << ":" << a.port; break; }
-        case AnyItem::FILE:      { any::file_t f = item.get<any::file_t>(); os << f.name << ", " << f.content.size() << " bytes"; break; }
+        case AnyItem::ADDRESS:   { settings::address_t a = item.get<settings::address_t>(); os << a.host << ":" << a.port; break; }
+        case AnyItem::FILE:      { settings::file_t f = item.get<settings::file_t>(); os << f.name << ", " << f.content.size() << " bytes"; break; }
         case AnyItem::SHARD:     {
-                                    any::shard_t s = item.get<any::shard_t>();
+                                    settings::shard_t s = item.get<settings::shard_t>();
                                     os << "total: " << s.shards.size() << "; shards list: ";
                                     for (size_t i = 0; i < s.shards.size(); ++i)
                                     {
