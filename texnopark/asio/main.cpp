@@ -37,36 +37,42 @@ void sync()
 
 class Client: public std::enable_shared_from_this<Client>
 {
-        boost::asio::ip::tcp::socket m_Sock;
-        char m_Buf[1024];
+    boost::asio::ip::tcp::socket m_Sock;
+    char m_Buf[1024];
+    char m_SendBuf[1024];
 
-    public:
-        Client(boost::asio::io_service &io) : m_Sock(io) {}
-        boost::asio::ip::tcp::socket& sock()             { return m_Sock; }
-        void read()
-        {   
-            m_Sock.async_read_some(boost::asio::buffer(m_Buf),
-                        boost::bind(&Client::handleRead, shared_from_this(),
-                            boost::asio::placeholders::error,
-                            boost::asio::placeholders::bytes_transferred)
-            );  
-        }
-        void handleRead(const boost::system::error_code& e, std::size_t bytes_transferred)
+public:
+    Client(boost::asio::io_service &io) : m_Sock(io) {}
+    boost::asio::ip::tcp::socket& sock()             { return m_Sock; }
+    void read()
+    {
+        m_Sock.async_read_some(boost::asio::buffer(m_Buf),
+                               boost::bind(&Client::handleRead,
+                                   shared_from_this(),
+                                   boost::asio::placeholders::error,
+                                   boost::asio::placeholders::bytes_transferred));
+    }
+    void handleRead(const boost::system::error_code& e, std::size_t bytes_transferred)
+    {
+        if (e == boost::asio::error::eof)
         {
-            if (e == boost::asio::error::eof)
-            {
-                std::cerr << "-client: " << m_Sock.remote_endpoint().address().to_string() << std::endl;
-            }
-            if (e) return;
-            std::cerr << "read: " << bytes_transferred << " bytes" << std::endl;
-            m_Sock.async_write_some(boost::asio::buffer(m_Buf),
-                        [self = shared_from_this()](const boost::system::error_code& e, std::size_t bytes_transferred)->void
-                        {
-                            // После того, как запишем ответ, можно снова читать
-                            self->read();
-                        }
-            );
+            std::cerr << "-client: " << m_Sock.remote_endpoint().address().to_string() << std::endl;
         }
+        if (e) return;
+
+        //std::cerr << "read: " << bytes_transferred << " bytes" << std::endl;
+
+        int k = snprintf(m_SendBuf, sizeof(m_SendBuf), "HTTP/1.1 200 OK\r\n");
+        k += snprintf(m_SendBuf + k, sizeof(m_SendBuf) - k, "Content-Length: 26\r\n\r\n");
+        k += snprintf(m_SendBuf + k, sizeof(m_SendBuf) - k, "o2proxy ready (ver. 0.1.3)");
+
+        m_Sock.async_write_some(boost::asio::buffer(m_SendBuf),
+                [self = shared_from_this()](const boost::system::error_code& e, std::size_t bytes_transferred)->void
+                {
+                    // После того, как запишем ответ, можно снова читать
+                    // self->read();
+                });
+    }
 };
 
 class Server {
@@ -75,7 +81,9 @@ class Server {
 
     void onAccept(std::shared_ptr<Client> c, const boost::system::error_code& e) {
         if (e) return;
+
         std::cerr << "+client: " << c->sock().remote_endpoint().address().to_string().c_str() << std::endl;
+
         c->read();
         startAccept();
     }
