@@ -68,9 +68,19 @@ int main(int argc, char *argv[])
     // 5. Conditional jump or move depends on uninitialised value(s)
     if (0)
     {
-        int r;
-        int size = r + 4;
-        printf("r: %d\n", size);
+        // int r;
+        // int size = r + 4;
+        // printf("r: %d\n", size);
+
+        char *data = malloc(5);
+        data[0] = 'a';
+        data[1] = 'b';
+        data[1] = 'c';
+        if (data[2] == 'c')
+        {
+            printf("YES\n");
+        }
+        free(data);
     }
 
     // 6. invalid read/write
