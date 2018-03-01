@@ -92,6 +92,9 @@ int main(int argc, char *argv[])
         int b = arr[1];
         int c = arr[2];
         free(arr);
+
+        // and double free() also !
+        // free(arr);
     }
 
     return 0;
