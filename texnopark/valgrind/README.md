@@ -1,6 +1,6 @@
 ## Examples
 ```
 valgrind ./a.out
-valgrind ./a.out --tool=memcheck --leak-check=yes --show-reachable=yes
+valgrind --tool=memcheck --leak-check=yes ./a.out
 ...
 ```
