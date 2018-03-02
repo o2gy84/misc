@@ -18,7 +18,12 @@ typedef struct Tree
     struct Tree *right;
 } Tree;
 
-int main(int argc, char *argv[])
+void good_work()
+{
+    printf("good...\n");
+}
+
+void bad_work()
 {
     // 1. directly lost
     if (0)
@@ -45,10 +50,7 @@ int main(int argc, char *argv[])
         char tmp[8];
         bad_func(tmp);
 
-        // kill(getpid(), SIGKILL);
-        // or smth that causes segfault, e.g. 
-        // char *s = "string";
-        // *s = 'S';
+        // or kill(getpid(), SIGKILL);
         --p;
         free(p);
     }
@@ -95,6 +97,17 @@ int main(int argc, char *argv[])
 
         // and double free() also !
         // free(arr);
+    }
+}
+
+int main(int argc, char *argv[])
+{
+    printf("Hello, TechnoPark!\n");
+    while (1)
+    {
+        // good_work();
+        bad_work();
+        sleep(1);
     }
 
     return 0;
