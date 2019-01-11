@@ -1,4 +1,4 @@
-### benchmark for calculating euclidian distance and dot product on 128-dim float32 vectors
+### benchmark for calculating euclidean distance and dot product on 128-dim float32 vectors
 
 ## C++
 compile:
