@@ -1,4 +1,4 @@
-### benchmark for resizing ind cropping mage
+### benchmark for resizing ind cropping image
 ## SPOILER:
 there is (almost) no difference between C++ and Python, because of both just uses OpenCV,  
 so this is just libopencv.so tesing, but no languages.
