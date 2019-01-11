@@ -1,9 +1,9 @@
-## benchmark for calculating euclidian distance and dot product on 128-dim float32 vectors
+### benchmark for calculating euclidian distance and dot product on 128-dim float32 vectors
 
-# C++
+## C++
 compile:
 ```
-g++-5 -O2 -msse -msse2 -msse3 -mfpmath=sse -mavx emb.cpp -std=c++14
+g++ -O2 -msse -msse2 -msse3 -mfpmath=sse -mavx emb.cpp -std=c++14
 ```
 run 1000 iterations:
 ```
@@ -27,7 +27,7 @@ total: 58 ms
 sum: -6.39984e+25
 ```
   
-# Python
+## Python
 run 1000 iterations:
 ```
 $ python emb.py --num 1000
