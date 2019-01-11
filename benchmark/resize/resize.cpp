@@ -39,7 +39,7 @@ cv::Mat load_image(const std::string &path)
 int counter = 0;
 std::mutex mutex;
 
-void test(cv::Mat &input, size_t h, size_t w)
+void test_impl(const cv::Mat &input, size_t h, size_t w)
 {
     mutex.lock();
     ++counter;
@@ -57,7 +57,7 @@ void test(cv::Mat &input, size_t h, size_t w)
     output = output(roi);
 }
 
-int test_object(const std::string &path, size_t num)
+int test(const std::string &path, size_t num)
 {
     std::cerr << "iterations: " << num << "\n";
 
@@ -70,7 +70,7 @@ int test_object(const std::string &path, size_t num)
 #pragma omp for
     for (size_t i = 0; i < num; ++i)
     {
-        test(image, 256, 256);
+        test_impl(image, 256, 256);
     }
 
     auto end = std::chrono::steady_clock::now();
@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
 
     try
     {
-        test_object(argv[1], std::stoul(argv[2]));
+        test(argv[1], std::stoul(argv[2]));
     }
     catch (const std::exception &e)
     {

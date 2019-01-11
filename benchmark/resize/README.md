@@ -1,7 +1,8 @@
 ### benchmark for resizing ind cropping image
 ## SPOILER:
-there is (almost) no difference between C++ and Python, because of both just uses OpenCV,  
-so this is just libopencv.so tesing, but no languages.
+There is (almost) no difference between C++ and Python, because of both just uses OpenCV,  
+so this is just libopencv.so tesing, but no languages.  
+But.. Instead of using multi-threading, you have to use processes in python (because of GIL).  
 
 ## C++
 compile:
