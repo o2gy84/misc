@@ -1,6 +1,5 @@
 ### benchmark for calculating condition_variable.notify_one() time
 
-## C++
 compile:
 ```
 g++ condvar_mut_perf.cpp -pthread -O2 -std=c++11
