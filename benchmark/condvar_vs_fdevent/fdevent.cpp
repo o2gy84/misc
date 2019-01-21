@@ -134,7 +134,6 @@ int run(Channel<int> &chan, uint64_t max_messages)
     while (chan.waiters() != 1) {std::this_thread::sleep_for(std::chrono::milliseconds(1));}
 
     Timer timer;
-    uint64_t ms = 0;
     uint64_t msg_sended = 0;
     while (true)
     {

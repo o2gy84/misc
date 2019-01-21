@@ -1,58 +1,56 @@
-### benchmark for passing data between threads via: local queue with mutex/condvar, fdevent and mq_queue
+### Benchmark for passing data between threads via: local queue with mutex/condvar, fdevent, mq_queue, semaphore
+
+## Compile
+```
+g++ condvar.cpp -pthread -O2 -std=c++11 -lrt
+```
 
 1) mutex/condvar:  
 ```
-g++ condvar.cpp -pthread -O2 -std=c++11
-
-$ time ./a.out 100000
+$ time ./a.out 100000 cond
 Test will transmit: 100000 messages through channel
-cycle time: 32ms
+send cycle time: 30ms
+receive cycle time: 32ms
 sum: 100000
 
-real	0m0.043s
-user	0m0.018s
-sys	0m0.028s
+real	0m0.045s
+user	0m0.020s
+sys	0m0.043s
 ```
 
 2) semaphore (example without real data transfer, just notify):  
 ```
-g++ sema.cpp -pthread -O2 -std=c++11
-
-$ time ./a.out 100000
 Test will transmit: 100000 messages through channel
-cycle time: 21ms
+send cycle time: 30ms
+receive cycle time: 36ms
 sum: 100000
 
-real	0m0.061s   <-- although the cycle with put() is faster, but the total time is longer
-user	0m0.036s
-sys	0m0.031s
+real	0m0.051s
+user	0m0.041s
+sys	0m0.025s
 ```
 
 3) fdevent: 
 ```
-g++ fdevent.cpp -pthread -O2 -std=c++11
-
-$ time ./a.out 100000
 Test will transmit: 100000 messages through channel
-cycle time: 81ms
+send cycle time: 77ms
+receive cycle time: 80ms
 sum: 100000
 
-real	0m0.093s
-user	0m0.037s
-sys	0m0.111s
+real	0m0.088s
+user	0m0.034s
+sys	0m0.120s
 ```
 
 4) mq_queue:  
 ```
-g++ mq_queue.cpp -pthread -lrt -O2 -std=c++11
-
-$ time ./a.out 100000
 Test will transmit: 100000 messages through channel
-cycle time: 333ms
+send cycle time: 292ms
+receive cycle time: 293ms
 sum: 100000
 
-real	0m0.344s
-user	0m0.030s
-sys	0m0.270s
+real	0m0.305s
+user	0m0.058s
+sys	0m0.222s
 ```
 
