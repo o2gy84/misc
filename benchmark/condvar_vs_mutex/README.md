@@ -3,9 +3,6 @@
 compile:
 ```
 g++ condvar_mut_perf.cpp -pthread -O2 -std=c++11
-```
-run:
-```
 ./a.out 100000 0
 ```
 100000 - approximate num of cycles  

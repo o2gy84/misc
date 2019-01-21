@@ -5,9 +5,6 @@ compile:
 ```
 g++ condvar.cpp -pthread -O2 -std=c++11
 
-```
-run:
-```
 $ time ./a.out 100000
 Test will transmit: 100000 messages through channel
 cycle time: 32ms
@@ -22,9 +19,6 @@ sys	0m0.028s
 compile:
 ```
 g++ sema.cpp -pthread -O2 -std=c++11
-```
-run:
-```
 
 ```
 
@@ -32,9 +26,7 @@ run:
 compile:
 ```
 g++ fdevent.cpp -pthread -O2 -std=c++11
-```
-run:
-```
+
 $ time ./a.out 100000
 Test will transmit: 100000 messages through channel
 cycle time: 81ms
@@ -49,9 +41,7 @@ sys	0m0.111s
 compile:
 ```
 g++ mq_queue.cpp -pthread -lrt -O2 -std=c++11
-```
-run:
-```
+
 $ time ./a.out 100000
 Test will transmit: 100000 messages through channel
 cycle time: 333ms
