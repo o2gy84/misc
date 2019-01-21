@@ -15,11 +15,19 @@ user	0m0.018s
 sys	0m0.028s
 ```
 
-2) semaphore: TODO
+2) semaphore: (example without real data transfer)
 compile:
 ```
 g++ sema.cpp -pthread -O2 -std=c++11
 
+$ time ./a.out 100000
+Test will transmit: 100000 messages through channel
+cycle time: 21ms
+sum: 100000
+
+real	0m0.061s
+user	0m0.036s
+sys	0m0.031s
 ```
 
 3) fdevent:

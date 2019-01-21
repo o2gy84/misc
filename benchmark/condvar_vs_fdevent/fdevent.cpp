@@ -104,9 +104,7 @@ private:
     int m_Efd = -1;
     fd_set m_ReadFds;
     bool m_Closed = false;
-    std::queue<T> m_Queue;
     std::atomic<size_t> m_Waiters;
-    std::condition_variable m_Condvar;
     std::mutex m_Mtx;
 };
 

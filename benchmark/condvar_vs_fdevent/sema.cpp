@@ -1,4 +1,4 @@
-#include <mqueue.h>
+#include <semaphore.h>
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
@@ -12,11 +12,8 @@
 #include <atomic>
 
 
-// Documentation:
-// https://linux.die.net/man/3/mq_open
-// https://linux.die.net/man/3/mq_send
-// https://linux.die.net/man/3/mq_receive
-// ...
+// No real data transfer,
+// just notify.
 
 namespace
 {
@@ -36,40 +33,23 @@ private:
     std::chrono::time_point<std::chrono::steady_clock> m_Start;
 };
 
-#define Q_NAME "/test_queue"
-#define Q_MAX_MSGS_COUNT 10
-
 template <typename T>
 class Channel
 {
 public:
     Channel()
     {
-        static_assert(sizeof(T) <= sizeof(uint64_t), "this toy works with uint64_t");
-
         m_Waiters = 0;
 
-        struct mq_attr attr;
-        attr.mq_flags = 0;
-        attr.mq_maxmsg = Q_MAX_MSGS_COUNT;
-        attr.mq_msgsize = sizeof(uint64_t);
-        attr.mq_curmsgs = 0;
-
-        m_Mq = mq_open(Q_NAME, O_CREAT | O_EXCL | O_RDWR, 0644, &attr);
-        if (-1 == m_Mq)
+        int ret = sem_init(&m_Sema, /*shared_between_threads*/0, /*value*/0);
+        if (ret == -1)
         {
-            if (EEXIST == errno)
-            {
-                std::cerr << "queue will be delete, try again\n";
-                mq_unlink(Q_NAME);
-            }
-            throw std::runtime_error(std::string("error create queue: ") + strerror(errno));
+            throw std::runtime_error(std::string("sem_init: ") + strerror(errno));
         }
     }
     ~Channel()
     {
-        mq_close(m_Mq);
-        mq_unlink(Q_NAME);
+        sem_destroy(&m_Sema); 
     }
 public:
     int put(T &&val)
@@ -79,28 +59,34 @@ public:
             return -1;
         }
 
-        uint64_t v = static_cast<uint64_t>(val);
-        char *p = reinterpret_cast<char*>(&v);
-        int ret = mq_send(m_Mq, p, sizeof(v), 0);
+        int ret = sem_post(&m_Sema);
         if (ret != 0)
         {
-            throw std::runtime_error(std::string("mq_send: ") + strerror(errno));
+            throw std::runtime_error("sem_post: ");
         }
+
         return 0;
+    }
+    int getval()
+    {
+        int sval = 0;
+        int ret = sem_getvalue(&m_Sema, &sval);
+        if (ret != 0)
+        {
+            throw std::runtime_error("sem_getvalue: ");
+        }
+        return sval;
     }
     T get()
     {
-        char buffer[sizeof(uint64_t)];
         ++m_Waiters;
-        ssize_t bytes = mq_receive(m_Mq, buffer, sizeof(buffer), 0);
-        --m_Waiters;
-        if (bytes != sizeof(uint64_t))
+        int ret = sem_wait(&m_Sema);
+        if (ret != 0)
         {
-            throw std::runtime_error(std::string("mq_receive: ") + strerror(errno));
+            throw std::runtime_error("sem_wait: ");
         }
-
-        uint64_t *v = reinterpret_cast<uint64_t*>(&buffer);
-        return static_cast<T>(*v);
+        --m_Waiters;
+        return static_cast<T>(1);
     }
     size_t waiters()
     {
@@ -112,7 +98,7 @@ public:
         m_Closed = true;
     }
 private:
-    mqd_t m_Mq;
+    sem_t m_Sema;
     bool m_Closed = false;
     std::atomic<size_t> m_Waiters;
     std::mutex m_Mtx;
