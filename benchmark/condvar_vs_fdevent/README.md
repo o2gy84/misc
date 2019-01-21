@@ -20,6 +20,7 @@ sys	0m0.043s
 
 2) semaphore (example without real data transfer, just notify):  
 ```
+$ time ./a.out 100000 sema
 Test will transmit: 100000 messages through channel
 send cycle time: 30ms
 receive cycle time: 36ms
@@ -32,6 +33,7 @@ sys	0m0.025s
 
 3) fdevent: 
 ```
+$ time ./a.out 100000 efd
 Test will transmit: 100000 messages through channel
 send cycle time: 77ms
 receive cycle time: 80ms
@@ -44,6 +46,7 @@ sys	0m0.120s
 
 4) mq_queue:  
 ```
+$ time ./a.out 100000 mq
 Test will transmit: 100000 messages through channel
 send cycle time: 292ms
 receive cycle time: 293ms
