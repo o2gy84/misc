@@ -5,9 +5,12 @@ compile:
 ```
 g++ condvar_mut_perf.cpp -pthread -O2 -std=c++11
 ```
-run: ./a.out 100000 0
-100000 - approximate num of cycles
-0      - force unlock mutex before notify_one() is disabled
+run:
+```
+./a.out 100000 0
+```
+100000 - approximate num of cycles  
+0      - force unlock mutex before notify_one() is disabled  
 ```
 $ ./a.out 100000 0
 Sum threshold: 100000, force_mutex_unlock: false
