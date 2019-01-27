@@ -1,7 +1,6 @@
 ### benchmark for passing data between threads via: local queue with mutex/condvar, fdevent and mq_queue
 
-1) mutex/condvar:
-compile:
+1) mutex/condvar:  
 ```
 g++ condvar.cpp -pthread -O2 -std=c++11
 
@@ -15,8 +14,7 @@ user	0m0.018s
 sys	0m0.028s
 ```
 
-2) semaphore: (example without real data transfer)
-compile:
+2) semaphore (example without real data transfer, just notify):  
 ```
 g++ sema.cpp -pthread -O2 -std=c++11
 
@@ -30,8 +28,7 @@ user	0m0.036s
 sys	0m0.031s
 ```
 
-3) fdevent:
-compile:
+3) fdevent: 
 ```
 g++ fdevent.cpp -pthread -O2 -std=c++11
 
@@ -45,8 +42,7 @@ user	0m0.037s
 sys	0m0.111s
 ```
 
-4) mq_queue:
-compile:
+4) mq_queue:  
 ```
 g++ mq_queue.cpp -pthread -lrt -O2 -std=c++11
 
