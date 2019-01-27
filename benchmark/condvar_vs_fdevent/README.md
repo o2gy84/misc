@@ -23,7 +23,7 @@ Test will transmit: 100000 messages through channel
 cycle time: 21ms
 sum: 100000
 
-real	0m0.061s
+real	0m0.061s   <-- although the cycle with put() is faster, but the total time is longer
 user	0m0.036s
 sys	0m0.031s
 ```
