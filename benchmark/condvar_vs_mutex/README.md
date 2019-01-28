@@ -27,3 +27,10 @@ $ ltrace -c ./a.out 1000 0
  17.38    0.594947         589      1009 pthread_mutex_lock
  15.72    0.538072         535      1005 _ZNSt18condition_variable10notify_oneEv
 ```
+
+Running with force unlocking mutex before `notify()` makes programm much slower (linux pthreads, kernel 3.x.x):
+```
+$ ./a.out 100000 1
+Sum threshold: 100000, force_mutex_unlock: true
+cycle time: 378ms
+```
