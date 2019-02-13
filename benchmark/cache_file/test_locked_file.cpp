@@ -4,6 +4,14 @@
 #define WH_KEY_ID 'R'
 
 
+void print_stat(const std::string &src, size_t size, int ms, int32_t crc)
+{
+    std::cerr << "read from " << src << " at: " << ms << " msec, rate: " 
+              << ((1000*size)/(float)ms)/(float)(1024*1024) << " Mb/sec" << std::endl;
+    std::cerr << "size: " << size << " bytes, " << (size)/(float)(1024*1024) << " Mb" << std::endl;
+    std::cerr << "crc: " << crc << std::endl;
+}
+
 int main(int argc, char *argv[])
 {
     if (argc < 3
@@ -34,27 +42,22 @@ int main(int argc, char *argv[])
             std::string data(reinterpret_cast<const char*>(sd.data), sd.data_size);
             int ms = t.ms();
 
-            std::cerr << "read from shared memory at: " << ms << " msec" << std::endl;
-            std::cerr << "size: " << data.size() << " bytes" << std::endl;
-            std::cerr << "crc: " << my_crc(data.data(), data.size()) << std::endl;
+            print_stat("shared memory", data.size(), ms, my_crc(data.data(), data.size()));
         }
         else
         {
             PerfTimer t;
             std::string data = read_file_with_mmap(path.c_str());
             int read_ms = t.ms();
-            std::cerr << "read from disk at: " << read_ms << " msec" << std::endl;
-            std::cerr << "size: " << data.size() << " bytes" << std::endl;
-            std::cerr << "crc: " << my_crc(data.data(), data.size()) << std::endl;
+            print_stat("disk (or cache)", data.size(), read_ms, my_crc(data.data(), data.size()));
+
 
             char *buf = new char[data.size() + 1];
             t.reset();
             size_t len = data.copy(buf, data.size(), 0);
             int copy_ms = t.ms();
             buf[len] = '\0';
-            std::cerr << "read from heap at: " << copy_ms << " msec" << std::endl;
-            std::cerr << "size: " << len << " bytes" << std::endl;
-            std::cerr << "crc: " << my_crc(buf, len) << std::endl;
+            print_stat("heap", len, copy_ms, my_crc(buf, len));
 
             if ((float)read_ms/(float)copy_ms <= 2.0)
             {

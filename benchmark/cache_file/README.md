@@ -55,7 +55,7 @@ read from disk at: 2021 msec
 size: 1073741824 bytes
 ```
 
-#### Again, check if big.txt is present in file cache and
+#### Again, check if big.txt is present in file cache or not
 ```
 $ ./pcstat --nohdr big.txt 
 |----------+----------------+------------+-----------+---------|
@@ -63,7 +63,7 @@ $ ./pcstat --nohdr big.txt
 |----------+----------------+------------+-----------+---------|
 ```
 
-#### Lets test for reading big file from file cache
+#### So now we can test for reading big file from file cache
 ```
 $ ./test big.txt cache
 read from disk at: 195 msec
@@ -98,7 +98,7 @@ $ ./test big.txt shmem
 read from shared memory at: 281 msec
 ```
   
-So, reading from shared memory still much faster than reading from disk, but a bit slower than reading from cache.  
+So, reading from shared memory is still much faster than reading from disk, but a bit slower than reading from cache.  
   
 #### Finally, lets test tmpfs
 Create tmpfs and put big file into it:
@@ -119,6 +119,17 @@ Unmount:
 sudo umount /mnt/test_dir
 ```
 
+### In total
+Lets run disk test
+```
+$ sudo hdparm -Tt /dev/sda
+
+/dev/sda:
+ Timing cached reads:   33384 MB in  2.00 seconds = 16716.34 MB/sec
+  Timing buffered disk reads: 1606 MB in  3.00 seconds = 535.07 MB/sec
+```
+
+So, as a first approximation, the test results match with `hdparam`.
 
 
 
