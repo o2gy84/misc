@@ -1,11 +1,11 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: worker-deployment
+  name: worker-deployment-1
   labels:
     app: worker
 spec:
-  replicas: 4
+  replicas: 1
   selector:
     matchLabels:
       app: worker
@@ -14,10 +14,33 @@ spec:
       labels:
         app: worker
     spec:
-      terminationGracePeriodSeconds: 10
+      terminationGracePeriodSeconds: 5
       containers:
       - name: worker-container
         image: my_worker:v1
         command: ["python"]
         args: ["/root/worker.py", "queue1", "10.96.0.100:8100"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker-deployment-2
+  labels:
+    app: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      terminationGracePeriodSeconds: 5
+      containers:
+      - name: worker-container
+        image: my_worker:v1
+        command: ["python"]
+        args: ["/root/worker.py", "queue2", "10.96.0.100:8100"]
 
