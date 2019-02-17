@@ -19,7 +19,7 @@ $ curl localhost:8000/size
 
 ### Run worker
 ```
-sudo docker run -it --rm --name worker_cont --network=host my_worker python /root/worker.py queue1 127.0.0.1:8000
+sudo docker run -it --rm --name worker_cont --network=host my_worker python /root/worker.py queue1 127.0.0.1:8101
 sizes:  {u'queue1': 0, u'queue2': 0}
 sizes:  {u'queue1': 0, u'queue2': 0}
 ...
