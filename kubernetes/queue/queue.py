@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import json
+import json,sys
 from flask import Flask, render_template, request
 
 app = Flask(__name__)
@@ -35,4 +35,4 @@ def put():
     return json.dumps({"queue1": queue1, "queue2": queue2,})
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=8000)
+    app.run(host='0.0.0.0', port=sys.argv[1])
