@@ -19,5 +19,5 @@ spec:
       - name: worker-container
         image: my_worker:v1
         command: ["python"]
-        args: ["/root/worker.py", "queue1", "10.244.0.32:8100"]
+        args: ["/root/worker.py", "queue1", "10.96.0.100:8100"]
 

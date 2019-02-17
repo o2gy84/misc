@@ -12,7 +12,7 @@ spec:
     protocol: TCP
     port: 8100
     targetPort: 8101
-  clusterIP: 10.244.0.32
+  clusterIP: 10.96.0.100
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -25,6 +25,7 @@ spec:
   selector:
     matchLabels:
       app: queue
+  serviceName: queue
   template:
     metadata:
       labels:
