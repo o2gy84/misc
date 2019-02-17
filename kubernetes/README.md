@@ -8,7 +8,7 @@ cd worker/ && sudo docker build -t my_worker:v1 . && cd ..
 
 ### Run queue
 ```
-sudo docker run -it -p 8000:8000 --rm --name queue_cont --network=host my_queue python /root/queue.py
+sudo docker run -it -p 8101:8101 --rm --name queue_cont --network=host my_queue python /root/queue.py 8101
 ```
 
 ### Check (from another console)
