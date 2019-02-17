@@ -2,8 +2,8 @@
 
 ### Build images
 ```
-cd queue && sudo docker build -t my_queue . && cd ..
-cd worker/ && sudo docker build -t my_worker . && cd ..
+cd queue && sudo docker build -t my_queue:v1 . && cd ..
+cd worker/ && sudo docker build -t my_worker:v1 . && cd ..
 ```
 
 ### Run queue
