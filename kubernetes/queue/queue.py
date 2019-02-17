@@ -35,4 +35,4 @@ def put():
     return json.dumps({"queue1": queue1, "queue2": queue2,})
 
 if __name__ == "__main__":
-    app.run(port=8000)
+    app.run(host='0.0.0.0', port=8000)
