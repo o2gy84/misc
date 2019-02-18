@@ -8,3 +8,8 @@ kubectl create -f prometheus.yml
 ```
 kubectl port-forward prometheus-prometheus-0 9090
 ```
+
+### After endpoint with /metrics deployed:
+```
+kubectl create -f prometheus/prometheus.queue.service_monitor.yml
+```

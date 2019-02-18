@@ -34,5 +34,23 @@ def put():
     if not q2 == None: queue2 = queue2 + int(q2)
     return json.dumps({"queue1": queue1, "queue2": queue2,})
 
+
+def toPrometheusType(queue, length):
+    long_string = '''\
+# HELP queue_size_{0} The size of queue {0} in tarantool
+# TYPE queue_size_{0} gauge
+queue_size_{0} {1}
+'''.format(queue, length)
+    return long_string
+
+@app.route('/metrics', methods=['GET'])
+def get_metrics():
+    global queue1
+    global queue2
+    res = toPrometheusType("queue1", queue1)
+    res = res + toPrometheusType("queue2", queue2)
+    return res
+
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=sys.argv[1])

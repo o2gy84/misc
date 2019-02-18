@@ -37,5 +37,6 @@ spec:
         command: ["python"]
         args: ["/root/queue.py", "8101"]
         ports:
-        - containerPort: 8101
+        - name: port-8100
+          containerPort: 8101
 
