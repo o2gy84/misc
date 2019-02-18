@@ -1,0 +1,10 @@
+### Prometheus
+```
+kubectl create -f prometheus.operator.manifest.yml 
+kubectl create -f prometheus.rbac.rules.yml
+kubectl create -f prometheus.yml
+```
+### Browser: localhost:9090
+```
+kubectl port-forward prometheus-prometheus-0 9090
+```
