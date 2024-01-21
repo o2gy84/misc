@@ -14,12 +14,28 @@ def parse_args():
     args = parser.parse_args()
     return args
 
+# returns tuple [ok, tags_changed]
 def process_file(path, dryrun):
-    print("+file: {}".format(path))
+    ext = Path(path).suffix.lower()
+    if ext != ".mp3":
+        print("[-] file ignored, not mp3: {}".format(path))
+        return True, False
+
+    print("[+] file: {}".format(path))
     try:
         audiofile = eyed3.load(path)
         if dryrun:
-            print("\tartist: {}, title: {}".format(audiofile.tag.artist, audiofile.tag.title))
+            if audiofile.tag is None:
+                print("\tartist: unknown, title: unknown (no tags parsed)")
+                return True, False
+
+            artist = "unknown"
+            title = "unknown"
+            if audiofile.tag.artist != None:
+                artist = audiofile.tag.artist
+            if audiofile.tag.title != None:
+                title = audiofile.tag.title
+            print("\tartist: {}, title: {}".format(artist, title))
             return True, False
 
         change = False
