@@ -38,8 +38,10 @@ def process_file(path, dryrun):
             print("\tartist: {}, title: {}".format(artist, title))
             return True, False
 
-        change = False
+        if audiofile.tag is None:
+            audiofile.tag = eyed3.id3.Tag()
 
+        change = False
         if audiofile.tag.title == None:
             fileName = Path(path).stem
             audiofile.tag.title = fileName
@@ -55,7 +57,7 @@ def process_file(path, dryrun):
 
         return True, False
     except Exception as e:
-        print("error load tags from: {}, err: {}".format(path, e))
+        print("\terror load tags from: {}, err: {}".format(path, e))
         return False, False
 
 def process_dir(path, dryrun):
