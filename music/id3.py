@@ -10,13 +10,18 @@ def parse_args():
     parser = argparse.ArgumentParser(description='id3 tags utility')
     parser.add_argument('--file', dest='file', help='path to file')
     parser.add_argument('--dir', dest='dir', help='path to dir')
+    parser.add_argument('--dry', dest='dry', action='store_true', help='check files without changes')
     args = parser.parse_args()
     return args
 
-def process_file(path):
+def process_file(path, dryrun):
     print("+file: {}".format(path))
     try:
         audiofile = eyed3.load(path)
+        if dryrun:
+            print("\tartist: {}, title: {}".format(audiofile.tag.artist, audiofile.tag.title))
+            return True, False
+
         change = False
 
         if audiofile.tag.title == None:
@@ -37,7 +42,7 @@ def process_file(path):
         print("error load tags from: {}, err: {}".format(path, e))
         return False, False
 
-def process_dir(path):
+def process_dir(path, dryrun):
     changed = 0
     notchanged = 0
     errors = 0
@@ -46,7 +51,7 @@ def process_dir(path):
     for root, dirs, files in os.walk(path):
         for filename in files:
             total = total + 1
-            ok, changed = process_file(os.path.join(root, filename))
+            ok, changed = process_file(os.path.join(root, filename), dryrun)
             if ok:
                 if changed:
                     changed = changed + 1
@@ -61,7 +66,7 @@ if __name__ == '__main__':
     args = parse_args()
 
     if args.file != None:
-        ok, changed = process_file(args.file)
+        ok, changed = process_file(args.file, args.dry)
         if ok:
             if changed:
                 print("ok, id3 changed")
@@ -71,6 +76,6 @@ if __name__ == '__main__':
             print("error")
         sys.exit(0)
 
-    if args.dir != "":
-        process_dir(args.dir)
+    if args.dir != None:
+        process_dir(args.dir, args.dry)
 
