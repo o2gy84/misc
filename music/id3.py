@@ -51,9 +51,9 @@ def process_dir(path, dryrun):
     for root, dirs, files in os.walk(path):
         for filename in files:
             total = total + 1
-            ok, changed = process_file(os.path.join(root, filename), dryrun)
+            ok, ch = process_file(os.path.join(root, filename), dryrun)
             if ok:
-                if changed:
+                if ch:
                     changed = changed + 1
                 else:
                     notchanged = notchanged + 1
