@@ -2,15 +2,17 @@
 
 import argparse
 import os,sys
-import time
 import eyed3
-from pathlib import Path
+import shutil
+from pathlib import Path,PurePosixPath
 
 def parse_args():
     parser = argparse.ArgumentParser(description='id3 tags utility')
-    parser.add_argument('--file', dest='file', help='path to file')
-    parser.add_argument('--dir', dest='dir', help='path to dir')
-    parser.add_argument('--dry', dest='dry', action='store_true', help='check files without changes')
+    parser.add_argument('--file',             dest='file', help='path to file')
+    parser.add_argument('--dir',              dest='dir', help='path to dir')
+    parser.add_argument('--r_level',          dest='r_level', help='hierarchy level for reorganize', default=2)
+    parser.add_argument('--reorganize',       dest='reorganize', action='store_true', help='if specified, script will move all data into directory on `reorganize_level` hierarchy')
+    parser.add_argument('--dry',              dest='dry', action='store_true', help='check files without changes')
     args = parser.parse_args()
     return args
 
@@ -60,7 +62,7 @@ def process_file(path, dryrun):
         print("\terror load tags from: {}, err: {}".format(path, e))
         return False, False
 
-def process_dir(path, dryrun):
+def dir_fix_id3(path, dryrun):
     changed = 0
     notchanged = 0
     errors = 0
@@ -80,6 +82,57 @@ def process_dir(path, dryrun):
 
     print("total: {}, notchanged: {}, changed: {}, errors: {}".format(int(total), int(notchanged), int(changed), int(errors)))
 
+# returns ok, dict
+def dir_reorganize(path, level):
+    uniq = {}
+    for root, dirs, files in os.walk(path):
+        for f in files:
+            ext = Path(f).suffix.lower()
+            if ext != ".mp3":
+                continue
+
+            if f in uniq:
+                print("Found collision file1: {} and file2: {}, need rename".format(os.path.join(root, f), uniq[f]['origin']))
+                return  False, {}
+
+            p = PurePosixPath(root)
+
+            #relative: PostRock/Amera/1
+            rel = p.relative_to(path)
+
+            if rel is None:
+                continue
+            if len(str(rel)) <= 2:
+                continue
+            if len(rel.parts) <= level - 1:
+                continue
+
+            target = path
+            counter = 0
+            for part in rel.parts:
+                target = os.path.join(target, rel.parts[counter])
+                counter = counter + 1
+                if counter == level - 1:
+                    break
+
+            uniq[f] = {
+                    'target': target,
+                    'origin': os.path.join(root, f)
+            }
+
+    return True, uniq
+
+def dir_move(path, level, d):
+    for k, v in d.items():
+        src = v['origin']
+        dst = os.path.join(v['target'], k)
+        os.rename(src, dst)
+
+    # todo Physically remove empty folders
+    #counter = 1
+    #if level > 1:
+        #l = os.listdir(path=path)
+
 if __name__ == '__main__':
     args = parse_args()
 
@@ -95,5 +148,15 @@ if __name__ == '__main__':
         sys.exit(0)
 
     if args.dir != None:
-        process_dir(args.dir, args.dry)
+        if args.reorganize:
+            ok, d = dir_reorganize(args.dir, int(args.r_level))
+            if not ok:
+                sys.exit(1)
+            for k, v in d.items():
+                print("file: {} --> {}".format(v['origin'], os.path.join(v['target'], k)))
+            if args.dry:
+                sys.exit(0)
+            dir_move(args.dir, int(args.r_level), d)
+        else:
+            dir_fix_id3(args.dir, args.dry)
 
