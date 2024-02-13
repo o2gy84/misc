@@ -12,6 +12,7 @@ def parse_args():
     parser.add_argument('--dir',              dest='dir', help='path to dir')
     parser.add_argument('--r_level',          dest='r_level', help='hierarchy level for reorganize', default=2)
     parser.add_argument('--reorganize',       dest='reorganize', action='store_true', help='if specified, script will move all data into directory on `reorganize_level` hierarchy')
+    parser.add_argument('--exclude',          dest='exclude', help='example: --exclude dir1,dir2, exclude dirs from reorganize')
     parser.add_argument('--dry',              dest='dry', action='store_true', help='check files without changes')
     args = parser.parse_args()
     return args
@@ -83,8 +84,12 @@ def dir_fix_id3(path, dryrun):
     print("total: {}, notchanged: {}, changed: {}, errors: {}".format(int(total), int(notchanged), int(changed), int(errors)))
 
 # returns ok, dict
-def dir_reorganize(path, level):
+def dir_reorganize(path, exclude_dirs, level):
     uniq = {}
+    ex_dirs = []
+    if exclude_dirs is not None:
+        ex_dirs = exclude_dirs.split(",")
+
     for root, dirs, files in os.walk(path):
         for f in files:
             ext = Path(f).suffix.lower()
@@ -96,6 +101,16 @@ def dir_reorganize(path, level):
                 return  False, {}
 
             p = PurePosixPath(root)
+
+            is_excluded = False
+            for ex_dir in ex_dirs:
+                if p.is_relative_to(ex_dir):
+                    print("[-] exclude: {}/{}, because exclude prefix: {}".format(p, f, ex_dir))
+                    is_excluded = True
+                    break
+
+            if is_excluded:
+                continue
 
             #relative: PostRock/Amera/1
             rel = p.relative_to(path)
@@ -149,7 +164,7 @@ if __name__ == '__main__':
 
     if args.dir != None:
         if args.reorganize:
-            ok, d = dir_reorganize(args.dir, int(args.r_level))
+            ok, d = dir_reorganize(args.dir, args.exclude, int(args.r_level))
             if not ok:
                 sys.exit(1)
             for k, v in d.items():
