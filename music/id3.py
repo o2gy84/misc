@@ -90,6 +90,8 @@ def dir_reorganize(path, exclude_dirs, level):
     if exclude_dirs is not None:
         ex_dirs = exclude_dirs.split(",")
 
+    has_collisions = False
+
     for root, dirs, files in os.walk(path):
         for f in files:
             ext = Path(f).suffix.lower()
@@ -98,7 +100,8 @@ def dir_reorganize(path, exclude_dirs, level):
 
             if f in uniq:
                 print("Found collision file1: {} and file2: {}, need rename".format(os.path.join(root, f), uniq[f]['origin']))
-                return  False, {}
+                has_collisions = True
+                continue
 
             p = PurePosixPath(root)
 
@@ -134,6 +137,9 @@ def dir_reorganize(path, exclude_dirs, level):
                     'target': target,
                     'origin': os.path.join(root, f)
             }
+
+    if has_collisions:
+        return  False, {}
 
     return True, uniq
 
