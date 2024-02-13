@@ -83,6 +83,11 @@ def dir_fix_id3(path, dryrun):
 
     print("total: {}, notchanged: {}, changed: {}, errors: {}".format(int(total), int(notchanged), int(changed), int(errors)))
 
+def is_valid_ext(ext):
+    if ext == ".mp3" or ext == ".flac":
+        return True
+    return False
+
 # returns ok, dict
 def dir_reorganize(path, exclude_dirs, level):
     uniq = {}
@@ -95,7 +100,7 @@ def dir_reorganize(path, exclude_dirs, level):
     for root, dirs, files in os.walk(path):
         for f in files:
             ext = Path(f).suffix.lower()
-            if ext != ".mp3":
+            if not is_valid_ext(ext):
                 continue
 
             if f in uniq:
