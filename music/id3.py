@@ -12,14 +12,20 @@ def parse_args():
     parser.add_argument('--dir',              dest='dir', help='path to dir')
     parser.add_argument('--r_level',          dest='r_level', help='hierarchy level for reorganize', default=2)
     parser.add_argument('--fix',              dest='fix', action='store_true', help='if specified, script will fix id3 tags')
+    parser.add_argument('--title_from_name',  dest='title_from_name', action='store_true', help='if specified, id3-title will be taken from file name')
     parser.add_argument('--reorganize',       dest='reorganize', action='store_true', help='if specified, script will move all data into directory on `reorganize_level` hierarchy')
     parser.add_argument('--exclude',          dest='exclude', help='example: --exclude dir1,dir2, exclude dirs from reorganize')
     parser.add_argument('--dry',              dest='dry', action='store_true', help='check files without changes')
     args = parser.parse_args()
     return args
 
+def name_from_path(path):
+    name = Path(path).name
+    name = name.split(".", 2)[0]
+    return name
+
 # returns tuple [ok, tags_changed]
-def process_file(path, dryrun):
+def file_fix_id3_tags(path, dryrun, title_from_name):
     ext = Path(path).suffix.lower()
     if ext != ".mp3":
         print("[-] file ignored, not mp3: {}".format(path))
@@ -40,6 +46,9 @@ def process_file(path, dryrun):
             if audiofile.tag.title != None:
                 title = audiofile.tag.title
 
+            if title_from_name:
+                title = name_from_path(path)
+
             print("\tartist: {}, title: {}".format(artist, title))
             return True, False
 
@@ -51,6 +60,12 @@ def process_file(path, dryrun):
             fileName = Path(path).stem
             audiofile.tag.title = fileName
             change = True
+
+        if title_from_name:
+            new_title = name_from_path(path)
+            if new_title != audiofile.tag.title:
+                audiofile.tag.title = new_title
+                change = True
 
         #if audiofile.tag.artist == None:
             #audiofile.tag.artist = "artist"
@@ -65,7 +80,7 @@ def process_file(path, dryrun):
         print("\terror load tags from: {}, err: {}".format(path, e))
         return False, False
 
-def dir_fix_id3(path, dryrun):
+def dir_fix_id3(path, dryrun, title_from_name):
     changed = 0
     notchanged = 0
     errors = 0
@@ -74,7 +89,7 @@ def dir_fix_id3(path, dryrun):
     for root, dirs, files in os.walk(path):
         for filename in files:
             total = total + 1
-            ok, ch = process_file(os.path.join(root, filename), dryrun)
+            ok, ch = file_fix_id3_tags(os.path.join(root, filename), dryrun, title_from_name)
             if ok:
                 if ch:
                     changed = changed + 1
@@ -165,7 +180,7 @@ if __name__ == '__main__':
     args = parse_args()
 
     if args.file != None:
-        ok, changed = process_file(args.file, args.dry)
+        ok, changed = file_fix_id3_tags(args.file, args.dry, args.title_from_name)
         if ok:
             if changed:
                 print("ok, id3 changed")
@@ -186,7 +201,7 @@ if __name__ == '__main__':
                 sys.exit(0)
             dir_move(args.dir, int(args.r_level), d)
         elif args.fix:
-            dir_fix_id3(args.dir, args.dry)
+            dir_fix_id3(args.dir, args.dry, args.title_from_name)
         else:
             print("need to specify mode: --fix, --reorganize, e.t.c.")
             sys.exit(0)
