@@ -11,6 +11,7 @@ def parse_args():
     parser.add_argument('--file',             dest='file', help='path to file')
     parser.add_argument('--dir',              dest='dir', help='path to dir')
     parser.add_argument('--r_level',          dest='r_level', help='hierarchy level for reorganize', default=2)
+    parser.add_argument('--fix',              dest='fix', action='store_true', help='if specified, script will fix id3 tags')
     parser.add_argument('--reorganize',       dest='reorganize', action='store_true', help='if specified, script will move all data into directory on `reorganize_level` hierarchy')
     parser.add_argument('--exclude',          dest='exclude', help='example: --exclude dir1,dir2, exclude dirs from reorganize')
     parser.add_argument('--dry',              dest='dry', action='store_true', help='check files without changes')
@@ -38,6 +39,7 @@ def process_file(path, dryrun):
                 artist = audiofile.tag.artist
             if audiofile.tag.title != None:
                 title = audiofile.tag.title
+
             print("\tartist: {}, title: {}".format(artist, title))
             return True, False
 
@@ -183,6 +185,9 @@ if __name__ == '__main__':
             if args.dry:
                 sys.exit(0)
             dir_move(args.dir, int(args.r_level), d)
-        else:
+        elif args.fix:
             dir_fix_id3(args.dir, args.dry)
+        else:
+            print("need to specify mode: --fix, --reorganize, e.t.c.")
+            sys.exit(0)
 
