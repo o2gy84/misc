@@ -6,33 +6,33 @@ import(
 	"bytes"
 	"io/ioutil"
 	"crypto/tls"
-    "log"
-    "net/url"
-    "net/http"
-    "net/http/httputil"
+	"log"
+	"net/url"
+	"net/http"
+	"net/http/httputil"
 	"strconv"
 )
 
 func rewriteBody(resp *http.Response) (err error) {
-    b, err := ioutil.ReadAll(resp.Body)
-    if err != nil {
-        return  err
-    }
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return  err
+	}
 
 	fmt.Printf("\n==> response body:\n%s\n", string(b))
 
-    err = resp.Body.Close()
-    if err != nil {
+	err = resp.Body.Close()
+	if err != nil {
 		log.Printf("error body close: %s", err)
-        return err
-    }
+		return err
+	}
 
-    body := ioutil.NopCloser(bytes.NewReader(b))
+	body := ioutil.NopCloser(bytes.NewReader(b))
 
-    resp.Body = body
-    resp.ContentLength = int64(len(b))
-    resp.Header.Set("Content-Length", strconv.Itoa(len(b)))
-    return nil
+	resp.Body = body
+	resp.ContentLength = int64(len(b))
+	resp.Header.Set("Content-Length", strconv.Itoa(len(b)))
+	return nil
 }
 
 type DebugTransport struct{}
