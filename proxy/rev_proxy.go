@@ -1,6 +1,7 @@
 package main
 
 import(
+	"flag"
 	"fmt"
 	"bytes"
 	"io/ioutil"
@@ -18,7 +19,7 @@ func rewriteBody(resp *http.Response) (err error) {
         return  err
     }
 
-	fmt.Printf("\n==> response body: %s\n\n", string(b))
+	fmt.Printf("\n==> response body:\n%s\n", string(b))
 
     err = resp.Body.Close()
     if err != nil {
@@ -46,36 +47,39 @@ func (DebugTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 }
 
 func main() {
-        remote, err := url.Parse("https://10.102.228.22:443")
-        if err != nil {
-                panic(err)
-        }
+	proxyTo := flag.String("proxy", "http://google.com", "server to proxy to")
+	bindPort := flag.String("port", "3456", "bind port")
+	bindHost := flag.String("host", "0.0.0.0", "bind host")
+	flag.Parse()
 
-		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	remote, err := url.Parse(*proxyTo)
+	if err != nil {
+		panic(err)
+	}
 
-        handler := func(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) {
-                return func(w http.ResponseWriter, r *http.Request) {
-						// this breaks signature
-                        // r.Host = remote.Host
+	proxy := httputil.NewSingleHostReverseProxy(remote)
+	proxy.ModifyResponse = rewriteBody
+	proxy.Transport = DebugTransport{}
 
-                        p.ServeHTTP(w, r)
-                }
-        }
+	handler := func(p *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) {
+		return func(w http.ResponseWriter, r *http.Request) {
+			// All headers already are copied
 
-        proxy := httputil.NewSingleHostReverseProxy(remote)
+			// Often we need to pass original Host
+			// r.Host = remote.Host
 
-		proxy.ModifyResponse = rewriteBody
-		proxy.Transport = DebugTransport{}
+			p.ServeHTTP(w, r)
+		}
+	}
 
-        http.HandleFunc("/", handler(proxy))
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	http.HandleFunc("/", handler(proxy))
 
-		port := "3356"
-		host := "0.0.0.0"
-		ph := host + ":" + port
-		log.Printf("Start listen to: %s", ph)
+	log.Printf("Start listen to: %s:%s --> %s", *bindHost, *bindPort, *proxyTo)
 
-        err = http.ListenAndServe(ph, nil)
-        if err != nil {
-                panic(err)
-        }
+	hp := *bindHost + ":" + *bindPort
+	err = http.ListenAndServe(hp, nil)
+	if err != nil {
+		panic(err)
+	}
 }
