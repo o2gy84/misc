@@ -6,6 +6,7 @@ import eyed3
 import shutil
 from pathlib import Path,PurePosixPath
 
+
 def parse_args():
     parser = argparse.ArgumentParser(description='id3 tags utility')
     parser.add_argument('--file',             dest='file', help='path to file')
